@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     WEBHOOK_USERNAME: str = Field(default="A10 Guardian", description="Display name for webhook messages")
     WEBHOOK_FOOTER: str = Field(default="A10 Guardian API", description="Footer text for webhook messages")
 
+    # Telegram Notifications
+    TELEGRAM_BOT_TOKEN: str | None = Field(default=None, description="Telegram Bot API Token")
+    TELEGRAM_CHAT_ID: str | None = Field(default=None, description="Telegram Chat ID to send notifications")
+
     # Notification Control (granular)
     NOTIFY_TEMPLATE_CREATE: bool = Field(default=True, description="Send notification when template is created")
     NOTIFY_TEMPLATE_UPDATE: bool = Field(default=True, description="Send notification when template is updated")
