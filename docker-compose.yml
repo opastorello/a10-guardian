@@ -1,0 +1,43 @@
+services:
+  api:
+    image: ghcr.io/opastorello/a10-guardian:latest
+    build: .
+    container_name: a10-guardian-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  mcp:
+    image: ghcr.io/opastorello/a10-guardian:latest
+    container_name: a10-guardian-mcp
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    environment:
+      - MCP_TRANSPORT=streamable-http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8001
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    command: ["python", "src/a10_guardian/mcp_server.py"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost', 8001), timeout=3); s.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

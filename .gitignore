@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment
+.env
+.venv/
+venv/
+
+# Runtime
+session_cache.json
+session_cache.pkl
+*.log
+logs/*.log
+
+# Configuration (contains sensitive templates and zone configs)
+# Allow structure (.gitkeep) but ignore template files
+config/zone_templates/*.json
+config/*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude
+.claude/

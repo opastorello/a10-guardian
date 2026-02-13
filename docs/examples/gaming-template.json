@@ -1,0 +1,249 @@
+{
+  "name": "gaming",
+  "zone_payload": {
+    "advertised_enable": false,
+    "telemetry_enable": false,
+    "log_enable": false,
+    "log_periodic": false,
+    "zone_oper_policy": "Gaming-Policy",
+    "packet_capture_policy": "A10_Default",
+    "operational_mode": "idle",
+    "is_per_addr_glid_set": false,
+    "profile_name": "Gaming_Profile",
+    "port": {
+      "zone_service_list": [
+        {
+          "profile_name": "ICMP-V4-GLOBAL",
+          "protocol": "icmp-v4"
+        },
+        {
+          "profile_name": "TCP-GAMES",
+          "protocol": "tcp",
+          "port": "other"
+        },
+        {
+          "profile_name": "UDP-GERAL",
+          "protocol": "udp",
+          "port": "other"
+        },
+        {
+          "profile_name": "HTTP-GLOBAL",
+          "protocol": "http",
+          "port": 80
+        },
+        {
+          "profile_name": "SSL-GLOBAL",
+          "protocol": "ssl-l4",
+          "port": 443
+        },
+        {
+          "profile_name": "UDP-FIVEM",
+          "protocol": "udp",
+          "port": "30100-30200"
+        },
+        {
+          "profile_name": "UDP-FIVEMVOIP",
+          "protocol": "udp",
+          "port": "30220-30230"
+        },
+        {
+          "profile_name": "UDP-MINECRAFT",
+          "protocol": "udp",
+          "port": "19132-19300"
+        },
+        {
+          "profile_name": "UDP-MINECRAFT",
+          "protocol": "udp",
+          "port": "25465-25900"
+        },
+        {
+          "profile_name": "UDP-RUST",
+          "protocol": "udp",
+          "port": "28000-28075"
+        },
+        {
+          "profile_name": "UDP-ARK",
+          "protocol": "udp",
+          "port": "7700-7769"
+        },
+        {
+          "profile_name": "UDP-STEAMQUERY",
+          "protocol": "udp",
+          "port": "27000-27400"
+        },
+        {
+          "profile_name": "DNS-UDP-GLOBAL",
+          "protocol": "dns-udp",
+          "port": 53
+        }
+      ]
+    },
+    "src_port": [],
+    "continuous_learning": false,
+    "detection": {
+      "service_discovery": {
+        "pkt_rate_threshold": null
+      }
+    },
+    "zone_learning_jobs": [],
+    "device_group": "REPLACE-WITH-YOUR-DEVICE-GROUP-UUID"
+  },
+  "monitor_payload": {
+    "algorithm": "max",
+    "sensitivity": "high",
+    "manual_thresholds": false,
+    "deployZone": true,
+    "protection_values": [
+      {
+        "protocol": "dns-udp",
+        "port": "53",
+        "zone_escalation_score": 10,
+        "indicators": [
+          {
+            "name": "pkt-rate",
+            "value": 0,
+            "score": 20
+          },
+          {
+            "name": "bit-rate",
+            "value": 0,
+            "score": 0
+          },
+          {
+            "name": "pkt-drop-rate",
+            "value": 0,
+            "score": 0
+          }
+        ]
+      },
+      {
+        "protocol": "http",
+        "port": "80",
+        "zone_escalation_score": 10,
+        "indicators": [
+          {
+            "name": "pkt-rate",
+            "value": 0,
+            "score": 20
+          },
+          {
+            "name": "syn-rate",
+            "value": 0,
+            "score": 30
+          },
+          {
+            "name": "pkt-drop-rate",
+            "value": 0,
+            "score": 20
+          }
+        ]
+      },
+      {
+        "protocol": "icmp-v4",
+        "zone_escalation_score": 10,
+        "indicators": [
+          {
+            "name": "pkt-rate",
+            "value": 0,
+            "score": 10
+          }
+        ]
+      },
+      {
+        "protocol": "ssl-l4",
+        "port": "443",
+        "zone_escalation_score": 10,
+        "indicators": [
+          {
+            "name": "pkt-rate",
+            "value": 0,
+            "score": 20
+          },
+          {
+            "name": "syn-rate",
+            "value": 0,
+            "score": 40
+          }
+        ]
+      },
+      {
+        "protocol": "tcp",
+        "port_other": "other",
+        "zone_escalation_score": 10,
+        "indicators": [
+          {
+            "name": "pkt-rate",
+            "value": 0,
+            "score": 50
+          },
+          {
+            "name": "syn-rate",
+            "value": 0,
+            "score": 50
+          },
+          {
+            "name": "pkt-drop-rate",
+            "value": 0,
+            "score": 50
+          }
+        ]
+      },
+      {
+        "protocol": "udp",
+        "port_range_start": 30100,
+        "port_range_end": 30200,
+        "zone_escalation_score": 10,
+        "indicators": [
+          {
+            "name": "pkt-rate",
+            "value": 0,
+            "score": 30
+          },
+          {
+            "name": "bit-rate",
+            "value": 0,
+            "score": 20
+          }
+        ]
+      },
+      {
+        "protocol": "udp",
+        "port_range_start": 19132,
+        "port_range_end": 19300,
+        "zone_escalation_score": 10,
+        "indicators": [
+          {
+            "name": "pkt-rate",
+            "value": 0,
+            "score": 25
+          }
+        ]
+      },
+      {
+        "protocol": "udp",
+        "port_range_start": 28000,
+        "port_range_end": 28075,
+        "zone_escalation_score": 10,
+        "indicators": [
+          {
+            "name": "pkt-rate",
+            "value": 0,
+            "score": 25
+          }
+        ]
+      },
+      {
+        "protocol": "udp",
+        "port_other": "other",
+        "zone_escalation_score": null,
+        "indicators": [
+          {
+            "name": "pkt-rate",
+            "value": 0,
+            "score": 0
+          }
+        ]
+      }
+    ]
+  }
+}
