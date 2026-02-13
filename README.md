@@ -10,7 +10,7 @@ REST API + MCP Server for A10 Networks Thunder TPS DDoS mitigation devices. Prov
 - **📥 Template Import** — Import configurations from existing A10 zones to reuse across new mitigations
 - **🔐 Authentication** — API token for REST, Bearer token for MCP HTTP transport
 - **📊 Observability** — Structured logging with Loguru, audit trail for write operations
-- **🔔 Notifications** — Granular webhook alerts (Slack, Discord) for templates, mitigations, and system events
+- **🔔 Notifications** — Granular webhook alerts (Slack, Discord, Telegram) for templates, mitigations, and system events
 - **🐳 Docker Ready** — Two-service Compose setup (API + MCP) with health checks and persistent template storage
 
 ## 🛠️ Tech Stack
@@ -93,6 +93,10 @@ API_SECRET_TOKEN=your_secret_token              # API authentication token
 WEBHOOK_ENABLED=true                            # Enable webhook notifications
 WEBHOOK_URL=https://discord.com/api/webhooks/...  # Discord/Slack webhook URL
 WEBHOOK_USERNAME=A10 Guardian                   # Bot display name
+
+# Optional - Telegram (works alongside webhooks)
+TELEGRAM_BOT_TOKEN=123456:ABC-DEF...            # Get from @BotFather
+TELEGRAM_CHAT_ID=-1001234567890                 # Chat/group ID (@userinfobot)
 
 # Optional - Attack Monitoring
 NOTIFY_ATTACK_DETECTED=true                     # Alert on new attacks
@@ -357,6 +361,89 @@ GET /api/v1/attacks/incident/{incident_id}/details
 - ⏳ **Template drift detection** — When deployed zones differ from their original templates
 
 This provides **complete visibility** into all DDoS activity. For infrastructure change monitoring (zones, configs), see planned enhancements in the Roadmap section.
+
+## 📱 Telegram Notifications
+
+A10 Guardian supports **Telegram notifications** alongside Slack/Discord webhooks. Telegram notifications work independently and can be enabled concurrently with webhook notifications.
+
+### ⚙️ Setup
+
+1. **Create a Telegram Bot:**
+
+   - Message [@BotFather](https://t.me/BotFather) on Telegram
+   - Send `/newbot` and follow the prompts
+   - Copy the **bot token** (format: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
+
+2. **Get your Chat ID:**
+
+   - Start a conversation with your bot or add it to a group
+   - Message [@userinfobot](https://t.me/userinfobot) to get your **Chat ID**
+   - For private chats: positive number (e.g., `123456789`)
+   - For groups: negative number (e.g., `-1001234567890`)
+
+3. **Configure in `.env`:**
+
+```bash
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+TELEGRAM_CHAT_ID=-1001234567890
+```
+
+### 📨 Message Format
+
+Telegram notifications use **Markdown formatting** with emojis:
+
+**Attack Detected:**
+
+```text
+*🚨 Attack Detected*
+
+DDoS attack detected on zone 203.0.113.50
+
+🌐 *IP:* 203.0.113.50
+📎 *Zone ID:* f6593c0b-...
+⚙️ *Mode:* monitor
+
+_A10 Guardian API_
+```
+
+**Mitigation Started:**
+
+```text
+*🛡️ Mitigation Started*
+
+Protection activated for 203.0.113.50
+
+🌐 *IP:* 203.0.113.50
+🛡️ *Services:* 23
+📋 *Profile:* Gaming_Profile
+📋 *Template:* default
+
+_A10 Guardian API_
+```
+
+### ✅ Features
+
+- ✅ **Works alongside webhooks** — Send to Telegram AND Discord/Slack simultaneously
+- ✅ **Same event coverage** — Templates, mitigations, attacks, system health
+- ✅ **Markdown formatting** — Bold, italics, code blocks for better readability
+- ✅ **Event-specific emojis** — 🚨 attacks, 🛡️ mitigations, 📋 templates
+- ✅ **Granular control** — Use same `NOTIFY_*` settings as webhooks
+
+### 🔧 Example Configuration
+
+```bash
+# Enable both Telegram and Discord
+WEBHOOK_ENABLED=true
+WEBHOOK_URL=https://discord.com/api/webhooks/...
+TELEGRAM_BOT_TOKEN=123456:ABC-DEF...
+TELEGRAM_CHAT_ID=-1001234567890
+
+# Notification preferences (apply to both)
+NOTIFY_ATTACK_DETECTED=true
+NOTIFY_ATTACK_MITIGATED=true
+NOTIFY_MITIGATION_START=true
+NOTIFY_TEMPLATE_CREATE=true
+```
 
 ## 🤖 MCP Integration
 

@@ -15,7 +15,7 @@ FIELD_ICONS = {
 
 
 class NotificationService:
-    """Service to send notifications to external webhooks (Slack, Discord)."""
+    """Service to send notifications to external webhooks (Slack, Discord, Telegram)."""
 
     # Color mapping: Verde, Azul, Amarelo, Vermelho
     LEVEL_CONFIG = {
@@ -45,6 +45,9 @@ class NotificationService:
         self.url = settings.WEBHOOK_URL
         self.username = settings.WEBHOOK_USERNAME
         self.footer = settings.WEBHOOK_FOOTER
+        # Telegram-specific settings
+        self.telegram_bot_token = getattr(settings, "TELEGRAM_BOT_TOKEN", None)
+        self.telegram_chat_id = getattr(settings, "TELEGRAM_CHAT_ID", None)
 
     def send_notification(
         self,
@@ -56,7 +59,7 @@ class NotificationService:
     ):
         """Sends a structured notification to the configured webhook.
 
-        Auto-detects Discord vs Slack based on the webhook URL.
+        Auto-detects Discord, Slack, or Telegram based on the webhook URL.
 
         Args:
             title: Title of the event.
@@ -65,7 +68,7 @@ class NotificationService:
             fields: Optional key-value pairs shown as structured fields.
             event_type: Optional event type for specific emoji (template_create, mitigation_start, etc).
         """
-        if not self.enabled or not self.url:
+        if not self.enabled:
             return
 
         cfg = self.LEVEL_CONFIG.get(level, self.LEVEL_CONFIG["info"]).copy()
@@ -74,19 +77,25 @@ class NotificationService:
         if event_type and event_type in self.EVENT_EMOJIS:
             cfg["icon"] = self.EVENT_EMOJIS[event_type]
 
-        is_discord = "discord" in self.url
+        # Telegram notification (if bot token and chat ID are configured)
+        if self.telegram_bot_token and self.telegram_chat_id:
+            self._send_telegram(title, message, cfg, fields)
 
-        if is_discord:
-            payload = self._build_discord_payload(title, message, cfg, fields)
-        else:
-            payload = self._build_slack_payload(title, message, cfg, fields)
+        # Webhook notification (Discord/Slack/Teams)
+        if self.url:
+            is_discord = "discord" in self.url
 
-        try:
-            response = requests.post(self.url, json=payload, timeout=5)
-            response.raise_for_status()
-            logger.info(f"Notification sent: {title}")
-        except Exception as e:
-            logger.error(f"Failed to send webhook notification: {e}")
+            if is_discord:
+                payload = self._build_discord_payload(title, message, cfg, fields)
+            else:
+                payload = self._build_slack_payload(title, message, cfg, fields)
+
+            try:
+                response = requests.post(self.url, json=payload, timeout=5)
+                response.raise_for_status()
+                logger.info(f"Notification sent: {title}")
+            except Exception as e:
+                logger.error(f"Failed to send webhook notification: {e}")
 
     def _build_discord_payload(self, title: str, message: str, cfg: dict, fields: dict[str, str] | None) -> dict:
         ip = fields.pop("IP", None) if fields else None
@@ -127,3 +136,45 @@ class NotificationService:
             "username": self.username,
             "attachments": [attachment],
         }
+
+    def _send_telegram(self, title: str, message: str, cfg: dict, fields: dict[str, str] | None):
+        """Send notification to Telegram using Bot API.
+
+        Args:
+            title: Notification title
+            message: Message body
+            cfg: Level config with icon
+            fields: Optional fields dictionary
+        """
+        # Build message text in Markdown format
+        text_parts = [f"*{cfg['icon']} {title}*", "", message]
+
+        # Add fields
+        if fields:
+            text_parts.append("")
+            for name, value in fields.items():
+                icon = FIELD_ICONS.get(name, "▪️")
+                text_parts.append(f"{icon} *{name}:* {value}")
+
+        # Add footer
+        if self.footer:
+            text_parts.append("")
+            text_parts.append(f"_{self.footer}_")
+
+        telegram_text = "\n".join(text_parts)
+
+        # Send to Telegram API
+        telegram_url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
+        payload = {
+            "chat_id": self.telegram_chat_id,
+            "text": telegram_text,
+            "parse_mode": "Markdown",
+            "disable_web_page_preview": True,
+        }
+
+        try:
+            response = requests.post(telegram_url, json=payload, timeout=5)
+            response.raise_for_status()
+            logger.info(f"Telegram notification sent: {title}")
+        except Exception as e:
+            logger.error(f"Failed to send Telegram notification: {e}")
