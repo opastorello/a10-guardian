@@ -48,9 +48,7 @@ class NotificationService:
         self.telegram_bot_token = getattr(settings, "TELEGRAM_BOT_TOKEN", None)
         self.telegram_chat_id = getattr(settings, "TELEGRAM_CHAT_ID", None)
         # Service is enabled if webhook OR telegram is configured
-        self.enabled = (
-            settings.WEBHOOK_ENABLED and self.url
-        ) or (self.telegram_bot_token and self.telegram_chat_id)
+        self.enabled = (settings.WEBHOOK_ENABLED and self.url) or (self.telegram_bot_token and self.telegram_chat_id)
 
     def send_notification(
         self,
