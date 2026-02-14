@@ -22,7 +22,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT: str = Field(default="60/minute", description="Global Rate Limit")
     # Notifications
     WEBHOOK_ENABLED: bool = Field(default=False, description="Enable external webhook notifications")
-    WEBHOOK_URL: str | None = Field(default=None, description="Target URL for notifications (Slack/Teams/Discord)")
+    WEBHOOK_URL: str | None = Field(
+        default=None,
+        description="Webhook URL(s) for notifications. Supports single or multiple (comma-separated): "
+        "https://discord1 or https://discord1,https://discord2,https://slack",
+    )
     WEBHOOK_USERNAME: str = Field(default="A10 Guardian", description="Display name for webhook messages")
     WEBHOOK_FOOTER: str = Field(default="A10 Guardian API", description="Footer text for webhook messages")
 
@@ -56,12 +60,22 @@ class Settings(BaseSettings):
         default=30, description="How often to check for new attacks (in seconds, min: 10, max: 300)"
     )
 
+    # Zone Change Monitoring
+    NOTIFY_ZONE_CREATED: bool = Field(default=True, description="Send notification when zone is created outside API")
+    NOTIFY_ZONE_MODIFIED: bool = Field(
+        default=True, description="Send notification when zone configuration is modified outside API"
+    )
+    NOTIFY_ZONE_DELETED: bool = Field(default=True, description="Send notification when zone is deleted outside API")
+    ZONE_MONITORING_INTERVAL: int = Field(
+        default=30, description="How often to check for zone changes (in seconds, min: 10, max: 300)"
+    )
+
     # Template Configuration
     TEMPLATE_DIR: str = Field(default="config/zone_templates", description="Zone template storage directory")
 
     # Session
     SESSION_CACHE_TTL: int = 3600
-    SESSION_CACHE_FILE: str = "session_cache.json"
+    SESSION_CACHE_FILE: str = "config/session/session_cache.json"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=True)
 

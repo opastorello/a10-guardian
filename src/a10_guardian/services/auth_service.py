@@ -30,6 +30,11 @@ class AuthService:
             session (requests.Session): The active session object.
         """
         try:
+            # Ensure directory exists
+            cache_dir = os.path.dirname(self.cache_file)
+            if cache_dir:
+                os.makedirs(cache_dir, exist_ok=True)
+
             with open(self.cache_file, "w") as f:
                 json.dump(session.cookies.get_dict(), f)
             logger.info(f"Session cached to {self.cache_file}")

@@ -14,6 +14,7 @@ venv/
 # Runtime
 session_cache.json
 session_cache.pkl
+config/session/
 *.log
 logs/*.log
 

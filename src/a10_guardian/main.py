@@ -154,6 +154,71 @@ async def monitor_ddos_attacks():
             logger.error(f"Error in attack monitor: {e}")
 
 
+async def monitor_zone_changes():
+    """Background task to monitor zone configuration changes."""
+    from a10_guardian.services.zone_change_service import ZoneChangeService
+
+    notifier = NotificationService()
+    client = A10Client(username=settings.A10_USERNAME, password=settings.A10_PASSWORD)
+    zone_service = ZoneChangeService(client, notifier)
+
+    check_interval = max(10, min(settings.ZONE_MONITORING_INTERVAL, 300))  # Clamp between 10-300s
+    logger.info(f"Zone change monitoring interval: {check_interval}s")
+
+    # Initial populate - load existing zones without notifying
+    try:
+        logger.info("Performing initial zone population (no notifications)...")
+        initial_zones = zone_service.fetch_all_zones()
+        for zone_id, zone_data in initial_zones.items():
+            zone_service.known_zones[zone_id] = {
+                "snapshot": zone_data,
+                "first_seen": asyncio.get_event_loop().time(),
+            }
+        logger.info(f"Initial population complete: {len(initial_zones)} zones loaded")
+    except Exception as e:
+        logger.error(f"Failed initial zone population: {e}")
+
+    while True:
+        try:
+            await asyncio.sleep(check_interval)
+
+            # Fetch current zones
+            try:
+                current_zones = zone_service.fetch_all_zones()
+            except Exception as e:
+                logger.error(f"Failed to fetch zones: {e}")
+                continue
+
+            # Detect changes
+            new_ids, deleted_ids, modified_ids = zone_service.detect_zone_changes(current_zones)
+
+            # Process new zones
+            for zone_id in new_ids:
+                zone_service.notify_zone_created(current_zones[zone_id])
+                zone_service.known_zones[zone_id] = {
+                    "snapshot": current_zones[zone_id],
+                    "first_seen": asyncio.get_event_loop().time(),
+                }
+
+            # Process modified zones
+            for zone_id in modified_ids:
+                old = zone_service.known_zones[zone_id]["snapshot"]
+                new = current_zones[zone_id]
+                zone_service.notify_zone_modified(zone_id, old, new)
+                zone_service.known_zones[zone_id]["snapshot"] = new
+
+            # Process deleted zones
+            for zone_id in deleted_ids:
+                zone_service.notify_zone_deleted(zone_id, zone_service.known_zones[zone_id]["snapshot"])
+                del zone_service.known_zones[zone_id]
+
+        except asyncio.CancelledError:
+            logger.info("Zone change monitoring stopped")
+            break
+        except Exception as e:
+            logger.error(f"Error in zone monitor: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Setup logging on startup
@@ -189,6 +254,12 @@ async def lifespan(app: FastAPI):
         logger.info(f"Starting DDoS attack monitoring ({settings.ATTACK_MONITORING_INTERVAL}s interval)")
         attack_monitor_task = asyncio.create_task(monitor_ddos_attacks())
 
+    # Start zone change monitoring if enabled
+    zone_monitor_task = None
+    if settings.NOTIFY_ZONE_CREATED or settings.NOTIFY_ZONE_MODIFIED or settings.NOTIFY_ZONE_DELETED:
+        logger.info(f"Starting zone change monitoring ({settings.ZONE_MONITORING_INTERVAL}s interval)")
+        zone_monitor_task = asyncio.create_task(monitor_zone_changes())
+
     yield
 
     # Stop monitoring tasks
@@ -204,6 +275,13 @@ async def lifespan(app: FastAPI):
         attack_monitor_task.cancel()
         try:
             await asyncio.wait_for(attack_monitor_task, timeout=2.0)
+        except (asyncio.CancelledError, asyncio.TimeoutError):
+            pass
+
+    if zone_monitor_task:
+        zone_monitor_task.cancel()
+        try:
+            await asyncio.wait_for(zone_monitor_task, timeout=2.0)
         except (asyncio.CancelledError, asyncio.TimeoutError):
             pass
 

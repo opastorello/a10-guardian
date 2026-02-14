@@ -1,0 +1,76 @@
+{
+  "name": "A10 Guardian - N8N Workflows",
+  "nodes": [
+    {
+      "name": "HTTP Request - Get System Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [250, 300],
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/system/info",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "A10 Guardian API",
+          "data": {
+            "name": "x-api-token",
+            "value": "plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+          }
+        }
+      }
+    },
+    {
+      "name": "HTTP Request - List Zones",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [250, 450],
+      "parameters": {
+        "url": "http://localhost:8000/api/v1/mitigation/zones/list?page=1&items=50",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      }
+    },
+    {
+      "name": "HTTP Request - Mitigate IP",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [250, 600],
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/api/v1/mitigation/zones/mitigate/{{$json.ip_address}}?template=default",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      }
+    },
+    {
+      "name": "HTTP Request - Remove Mitigation",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [250, 750],
+      "parameters": {
+        "method": "DELETE",
+        "url": "http://localhost:8000/api/v1/mitigation/zones/remove/{{$json.ip_address}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      }
+    },
+    {
+      "name": "Webhook - Receive Attack Alert",
+      "type": "n8n-nodes-base.webhook",
+      "position": [50, 300],
+      "parameters": {
+        "path": "a10-attack-alert",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {},
+  "settings": {},
+  "staticData": null,
+  "tags": [],
+  "pinData": {},
+  "meta": {
+    "instanceId": "a10-guardian-api"
+  }
+}

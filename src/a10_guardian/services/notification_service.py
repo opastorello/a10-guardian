@@ -38,17 +38,28 @@ class NotificationService:
         "attack_detected": "\U0001f6a8",  # 🚨 Red alert siren
         "attack_mitigated": "\u2705",  # ✅ Green check (attack ended)
         "attack_ongoing": "\u26a0\ufe0f",  # ⚠️ Warning (long-running attack)
+        "zone_created": "\u2728",  # ✨ Sparkles - new zone
+        "zone_modified": "\U0001f527",  # 🔧 Wrench - configuration change
+        "zone_deleted": "\U0001f5d1\ufe0f",  # 🗑️ Trash - zone removed
     }
 
     def __init__(self):
-        self.url = settings.WEBHOOK_URL
+        # Support single or multiple webhooks (comma-separated in WEBHOOK_URL)
+        if settings.WEBHOOK_URL:
+            # Split by comma and strip whitespace (works for single or multiple URLs)
+            self.webhook_urls = [url.strip() for url in settings.WEBHOOK_URL.split(",") if url.strip()]
+        else:
+            self.webhook_urls = []
+
         self.username = settings.WEBHOOK_USERNAME
         self.footer = settings.WEBHOOK_FOOTER
         # Telegram-specific settings
         self.telegram_bot_token = getattr(settings, "TELEGRAM_BOT_TOKEN", None)
         self.telegram_chat_id = getattr(settings, "TELEGRAM_CHAT_ID", None)
         # Service is enabled if webhook OR telegram is configured
-        self.enabled = (settings.WEBHOOK_ENABLED and self.url) or (self.telegram_bot_token and self.telegram_chat_id)
+        self.enabled = (settings.WEBHOOK_ENABLED and self.webhook_urls) or (
+            self.telegram_bot_token and self.telegram_chat_id
+        )
 
     def send_notification(
         self,
@@ -82,9 +93,9 @@ class NotificationService:
         if self.telegram_bot_token and self.telegram_chat_id:
             self._send_telegram(title, message, cfg, fields)
 
-        # Webhook notification (Discord/Slack/Teams)
-        if self.url:
-            is_discord = "discord" in self.url
+        # Webhook notifications (Discord/Slack/Teams) - send to all configured webhooks
+        for webhook_url in self.webhook_urls:
+            is_discord = "discord" in webhook_url
 
             if is_discord:
                 payload = self._build_discord_payload(title, message, cfg, fields)
@@ -92,9 +103,9 @@ class NotificationService:
                 payload = self._build_slack_payload(title, message, cfg, fields)
 
             try:
-                response = requests.post(self.url, json=payload, timeout=5)
+                response = requests.post(webhook_url, json=payload, timeout=5)
                 response.raise_for_status()
-                logger.info(f"Notification sent: {title}")
+                logger.info(f"Notification sent to {webhook_url[:30]}...: {title}")
             except Exception as e:
                 logger.error(f"Failed to send webhook notification: {e}")
 

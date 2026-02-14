@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader
 
@@ -8,6 +10,9 @@ from a10_guardian.services.mitigation_service import MitigationService
 from a10_guardian.services.notification_service import NotificationService
 from a10_guardian.services.system_service import SystemService
 from a10_guardian.services.template_service import TemplateService
+
+if TYPE_CHECKING:
+    from a10_guardian.services.zone_change_service import ZoneChangeService
 
 # Define the API Key security scheme for Swagger UI integration
 api_key_header = APIKeyHeader(name="x-api-token", auto_error=True)
@@ -51,3 +56,11 @@ def get_attack_service(
     client: A10Client = Depends(get_a10_client), notifier: NotificationService = Depends(get_notification_service)
 ) -> AttackService:
     return AttackService(client, notifier)
+
+
+def get_zone_change_service(
+    client: A10Client = Depends(get_a10_client), notifier: NotificationService = Depends(get_notification_service)
+) -> "ZoneChangeService":
+    from a10_guardian.services.zone_change_service import ZoneChangeService
+
+    return ZoneChangeService(client, notifier)

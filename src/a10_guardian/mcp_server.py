@@ -59,6 +59,9 @@ if MCP_TRANSPORT != "stdio":
                 "endpoint": "/mcp",
                 "tools": [
                     "get_system_health",
+                    "get_system_devices",
+                    "get_system_license",
+                    "list_ongoing_attacks",
                     "list_active_mitigations",
                     "mitigate_ip",
                     "get_zone_status",
@@ -131,6 +134,69 @@ def get_system_health() -> str:
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return f"Error checking health: {str(e)}"
+
+
+@mcp.tool()
+def get_system_devices() -> str:
+    """Lists all A10 TPS devices in the deployment/cluster."""
+    try:
+        service = Container.get_system_service()
+        devices = service.get_devices()
+
+        if not devices:
+            return "No devices found."
+
+        result = f"Found {len(devices)} device(s):\n"
+        for device in devices:
+            status = device.get("status", "unknown")
+            result += f"- {device.get('name', 'N/A')} (status: {status})\n"
+        return result
+    except Exception as e:
+        logger.error(f"Get devices failed: {e}")
+        return f"Error listing devices: {str(e)}"
+
+
+@mcp.tool()
+def get_system_license() -> str:
+    """Returns A10 Thunder TPS license information and validity."""
+    try:
+        service = Container.get_system_service()
+        license_info = service.get_license()
+
+        return (
+            f"License Status: {license_info.get('status', 'N/A')}\n"
+            f"Type: {license_info.get('license_type', 'N/A')}\n"
+            f"Valid Until: {license_info.get('expiry_date', 'N/A')}\n"
+            f"Features: {', '.join(license_info.get('features', []))}"
+        )
+    except Exception as e:
+        logger.error(f"Get license failed: {e}")
+        return f"Error getting license info: {str(e)}"
+
+
+@mcp.tool()
+def list_ongoing_attacks() -> str:
+    """Lists all active DDoS attacks currently being mitigated in real-time."""
+    try:
+        from a10_guardian.services.attack_service import AttackService
+
+        client = Container.get_client()
+        attack_service = AttackService(client, Container.get_notification_service())
+        incidents = attack_service.get_ongoing_incidents()
+
+        if not incidents:
+            return "No ongoing DDoS attacks detected."
+
+        result = f"Found {len(incidents)} ongoing attack(s):\n"
+        for incident in incidents:
+            zone_name = incident.get("zone_name", "N/A")
+            attack_type = incident.get("attack_type", "Unknown")
+            start_time = incident.get("start_time", "N/A")
+            result += f"- {zone_name} | Type: {attack_type} | Started: {start_time}\n"
+        return result
+    except Exception as e:
+        logger.error(f"List attacks failed: {e}")
+        return f"Error listing attacks: {str(e)}"
 
 
 @mcp.tool()

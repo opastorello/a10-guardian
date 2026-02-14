@@ -13,6 +13,15 @@ REST API + MCP Server for A10 Networks Thunder TPS DDoS mitigation devices. Prov
 - **🔔 Notifications** — Granular webhook alerts (Slack, Discord, Telegram) for templates, mitigations, and system events
 - **🐳 Docker Ready** — Two-service Compose setup (API + MCP) with health checks and persistent template storage
 
+## 📚 Documentação
+
+**📖 [Documentação Completa em /docs](./docs/README.md)**
+
+- **[API Usage Guide](./docs/API_USAGE.md)** - Documentação completa da API REST
+- **[Integration Guide](./docs/INTEGRATION_GUIDE.md)** - N8N, Claude API, Gemini, Make.com, Zapier
+- **[N8N Workflows](./docs/N8N_INTEGRATION.json)** - Configuração pronta para N8N
+- **[MCP Guide](./docs/MCP_USAGE.md)** - Model Context Protocol server
+
 ## 🛠️ Tech Stack
 
 - **🐍 Python 3.10+** / **⚡ FastAPI** / **🦄 Uvicorn**
