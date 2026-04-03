@@ -25,13 +25,18 @@ class A10Client:
         self.auth_service = AuthService()
         self.session: requests.Session | None = None
 
-    def connect(self):
+    def connect(self, force_login: bool = False):
         """Authenticates with the A10 device and establishes a session.
+
+        Args:
+            force_login: If True, invalidates cached session and performs a fresh login.
 
         Raises:
             Exception: If authentication fails.
         """
-        logger.debug(f"Connecting to A10 as user: {self.username}")
+        logger.debug(f"Connecting to A10 as user: {self.username} (force={force_login})")
+        if force_login:
+            self.auth_service.invalidate_session()
         self.session = self.auth_service.get_authenticated_session(self.username, self.password)
         if not self.session:
             raise ConnectionError("Failed to authenticate with A10.")
@@ -81,7 +86,7 @@ class A10Client:
             # Check for soft-errors (redirects to login or 403)
             if self._is_session_expired(response):
                 logger.warning(f"Session expired (Status: {response.status_code}). Re-authenticating...")
-                self.connect()
+                self.connect(force_login=True)
 
                 # Re-inject CSRF for the retry
                 if method.upper() in ["POST", "DELETE", "PUT", "PATCH"]:

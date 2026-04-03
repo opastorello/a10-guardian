@@ -113,7 +113,7 @@ async def monitor_ddos_attacks():
 
             # Process each incident
             for incident in current_incidents:
-                incident_id = incident.get("incident_id")
+                incident_id = incident.get("name") or incident.get("incident_id")
                 if not incident_id:
                     continue
 
@@ -123,12 +123,14 @@ async def monitor_ddos_attacks():
 
                 # New attack detected
                 if incident_id not in known_incidents:
-                    logger.warning(f"NEW ATTACK DETECTED: {incident.get('zone_name')} - {incident_id}")
+                    zone = incident.get("zone") or incident.get("zone_name", "Unknown")
+                    logger.warning(f"NEW ATTACK DETECTED: {zone} - {incident_id}")
                     attack_service.notify_attack_detected(incident)
                     known_incidents[incident_id] = {
                         "start_time": incident.get("start_time"),
                         "first_seen": now,
                         "last_ongoing_notify": now,
+                        "incident": incident,
                     }
 
                 # Check for ongoing attack notifications (every 15min)
@@ -146,11 +148,10 @@ async def monitor_ddos_attacks():
                 elapsed = asyncio.get_event_loop().time() - incident_data["first_seen"]
 
                 logger.info(f"ATTACK MITIGATED: {incident_id} (duration: {int(elapsed)}s)")
-                # Create a minimal incident dict for notification
-                attack_service.notify_attack_mitigated(
-                    {"incident_id": incident_id, "zone_name": "Unknown", "severity": "Unknown"},
-                    int(elapsed),
-                )
+                # Use stored incident data for notification
+                stored_incident = incident_data.get("incident", {})
+                stored_incident.setdefault("name", incident_id)
+                attack_service.notify_attack_mitigated(stored_incident, int(elapsed))
                 del known_incidents[incident_id]
 
         except asyncio.CancelledError:

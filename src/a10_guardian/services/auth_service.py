@@ -89,14 +89,13 @@ class AuthService:
             if response.status_code == 200:
                 logger.debug("Session is valid.")
                 return True
-            elif response.status_code == 302 and "login" in response.headers.get("Location", ""):
-                logger.warning("Cached session expired (redirected to login).")
-                return False
             else:
-                if "auth/login" in response.url:
-                    logger.warning("Cached session expired (URL check).")
-                    return False
-                return True
+                # Any non-200 (302 to logout, login, or anything else) means session is expired
+                location = response.headers.get("Location", "")
+                logger.warning(
+                    f"Cached session expired (status={response.status_code}, location={location})"
+                )
+                return False
 
         except requests.RequestException:
             logger.error("Network error verifying session.")

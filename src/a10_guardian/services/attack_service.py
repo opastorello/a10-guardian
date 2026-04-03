@@ -34,8 +34,8 @@ class AttackService:
 
             response = self.client.get("/tps/zone/incident/ongoing/json/", params=params)
 
-            total = response.get("total_items", 0)
-            incidents = response.get("incident_list", [])
+            total = response.get("total", 0)
+            incidents = response.get("object_list", [])
 
             logger.info(f"Fetched {len(incidents)} ongoing incidents (total: {total})")
 
@@ -88,32 +88,23 @@ class AttackService:
         """Send notification when a new attack is detected.
 
         Args:
-            incident: Incident data from A10
+            incident: Incident data from A10 (object_list item)
         """
         if not settings.NOTIFY_ATTACK_DETECTED:
             return
 
-        zone_name = incident.get("zone_name", "Unknown")
-        severity = incident.get("severity", "Unknown")
+        zone_name = incident.get("zone") or incident.get("zone_name", "Unknown")
+        attack_type = incident.get("attack_type", "Unknown")
         start_time = incident.get("start_time", "Unknown")
-        incident_id = incident.get("incident_id", "N/A")
-
-        # Get additional stats if available
-        stats = self.get_incident_stats(incident_id) if incident_id != "N/A" else None
+        service = incident.get("service", "N/A")
+        incident_name = incident.get("name", "N/A")
 
         fields = {
             "Target IP": zone_name,
-            "Severity": severity,
+            "Attack Type": attack_type,
+            "Service": service,
             "Started": start_time,
-            "Incident ID": incident_id[:8] + "..." if len(incident_id) > 8 else incident_id,
         }
-
-        # Add traffic stats if available
-        if stats:
-            if "peak_pps" in stats:
-                fields["Peak Traffic"] = f"{stats['peak_pps']:,} pps"
-            if "attack_types" in stats:
-                fields["Attack Types"] = ", ".join(stats["attack_types"][:3])  # Top 3
 
         self.notifier.send_notification(
             title="DDoS Attack Detected",
@@ -124,7 +115,7 @@ class AttackService:
         )
 
         logger.bind(audit=True).warning(
-            f"Action: Attack Detected | Target: {zone_name} | Severity: {severity} | Incident: {incident_id}"
+            f"Action: Attack Detected | Target: {zone_name} | Type: {attack_type} | Incident: {incident_name}"
         )
 
     def notify_attack_mitigated(self, incident: dict, duration_seconds: int):
@@ -137,9 +128,9 @@ class AttackService:
         if not settings.NOTIFY_ATTACK_MITIGATED:
             return
 
-        zone_name = incident.get("zone_name", "Unknown")
-        severity = incident.get("severity", "Unknown")
-        incident_id = incident.get("incident_id", "N/A")
+        zone_name = incident.get("zone") or incident.get("zone_name", "Unknown")
+        attack_type = incident.get("attack_type", "Unknown")
+        incident_name = incident.get("name", "N/A")
 
         # Format duration
         hours = duration_seconds // 3600
@@ -148,9 +139,8 @@ class AttackService:
 
         fields = {
             "Target IP": zone_name,
-            "Severity": severity,
+            "Attack Type": attack_type,
             "Duration": duration_str,
-            "Incident ID": incident_id[:8] + "..." if len(incident_id) > 8 else incident_id,
         }
 
         self.notifier.send_notification(
@@ -162,7 +152,7 @@ class AttackService:
         )
 
         logger.bind(audit=True).info(
-            f"Action: Attack Mitigated | Target: {zone_name} | Duration: {duration_str} | Incident: {incident_id}"
+            f"Action: Attack Mitigated | Target: {zone_name} | Duration: {duration_str} | Incident: {incident_name}"
         )
 
     def notify_attack_ongoing(self, incident: dict, elapsed_seconds: int):
@@ -175,9 +165,9 @@ class AttackService:
         if not settings.NOTIFY_ATTACK_ONGOING:
             return
 
-        zone_name = incident.get("zone_name", "Unknown")
-        severity = incident.get("severity", "Unknown")
-        incident_id = incident.get("incident_id", "N/A")
+        zone_name = incident.get("zone") or incident.get("zone_name", "Unknown")
+        attack_type = incident.get("attack_type", "Unknown")
+        incident_name = incident.get("name", "N/A")
 
         hours = elapsed_seconds // 3600
         minutes = (elapsed_seconds % 3600) // 60
@@ -185,10 +175,9 @@ class AttackService:
 
         fields = {
             "Target IP": zone_name,
-            "Severity": severity,
+            "Attack Type": attack_type,
             "Duration": duration_str,
             "Status": "Still under attack",
-            "Incident ID": incident_id[:8] + "..." if len(incident_id) > 8 else incident_id,
         }
 
         self.notifier.send_notification(
@@ -200,5 +189,5 @@ class AttackService:
         )
 
         logger.bind(audit=True).warning(
-            f"Action: Attack Ongoing | Target: {zone_name} | Duration: {duration_str} | Incident: {incident_id}"
+            f"Action: Attack Ongoing | Target: {zone_name} | Duration: {duration_str} | Incident: {incident_name}"
         )
