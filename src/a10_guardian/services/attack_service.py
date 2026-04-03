@@ -179,10 +179,6 @@ class AttackService:
         severity = incident.get("severity", "Unknown")
         incident_id = incident.get("incident_id", "N/A")
 
-        # Only notify every 15 minutes for ongoing attacks
-        if elapsed_seconds % 900 != 0:  # 900s = 15min
-            return
-
         hours = elapsed_seconds // 3600
         minutes = (elapsed_seconds % 3600) // 60
         duration_str = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"

@@ -119,19 +119,25 @@ async def monitor_ddos_attacks():
 
                 current_incident_ids.add(incident_id)
 
+                now = asyncio.get_event_loop().time()
+
                 # New attack detected
                 if incident_id not in known_incidents:
                     logger.warning(f"NEW ATTACK DETECTED: {incident.get('zone_name')} - {incident_id}")
                     attack_service.notify_attack_detected(incident)
                     known_incidents[incident_id] = {
                         "start_time": incident.get("start_time"),
-                        "first_seen": asyncio.get_event_loop().time(),
+                        "first_seen": now,
+                        "last_ongoing_notify": now,
                     }
 
                 # Check for ongoing attack notifications (every 15min)
                 elif settings.NOTIFY_ATTACK_ONGOING:
-                    elapsed = asyncio.get_event_loop().time() - known_incidents[incident_id]["first_seen"]
-                    attack_service.notify_attack_ongoing(incident, int(elapsed))
+                    elapsed = now - known_incidents[incident_id]["first_seen"]
+                    since_last = now - known_incidents[incident_id].get("last_ongoing_notify", now)
+                    if since_last >= 900:  # 15 minutes
+                        attack_service.notify_attack_ongoing(incident, int(elapsed))
+                        known_incidents[incident_id]["last_ongoing_notify"] = now
 
             # Detect mitigated/ended attacks (incidents that disappeared from ongoing list)
             mitigated_ids = set(known_incidents.keys()) - current_incident_ids
@@ -259,6 +265,27 @@ async def lifespan(app: FastAPI):
     if settings.NOTIFY_ZONE_CREATED or settings.NOTIFY_ZONE_MODIFIED or settings.NOTIFY_ZONE_DELETED:
         logger.info(f"Starting zone change monitoring ({settings.ZONE_MONITORING_INTERVAL}s interval)")
         zone_monitor_task = asyncio.create_task(monitor_zone_changes())
+
+    # Send startup notification
+    notifier = NotificationService()
+    monitors = []
+    if health_monitor_task:
+        monitors.append("Health")
+    if attack_monitor_task:
+        monitors.append("Attacks")
+    if zone_monitor_task:
+        monitors.append("Zone Changes")
+
+    notifier.send_notification(
+        title="A10 Guardian Started",
+        message="API server is online and ready to receive requests",
+        level="success",
+        fields={
+            "Device": settings.A10_BASE_URL,
+            "API Port": "8000",
+            "Monitors": ", ".join(monitors) if monitors else "None",
+        },
+    )
 
     yield
 

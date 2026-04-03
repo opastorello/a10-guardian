@@ -7,6 +7,8 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - TZ=America/Sao_Paulo
     volumes:
       - ./logs:/app/logs
       - ./config:/app/config
@@ -28,6 +30,7 @@ services:
     env_file:
       - .env
     environment:
+      - TZ=America/Sao_Paulo
       - MCP_TRANSPORT=streamable-http
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8001
