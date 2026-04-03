@@ -113,7 +113,7 @@ O sistema envia notificações para **Discord** e **Telegram** automaticamente:
 
 **Attack Monitoring:**
 - 🚨 Attack Detected - Ataque DDoS detectado
-- ✅ Attack Mitigated - Ataque mitigado
+- ✅ Attack Stopped - Ataque parou
 - ⏱️ Attack Ongoing - Ataques em andamento
 
 **Mitigation Operations:**

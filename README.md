@@ -256,7 +256,7 @@ A10 Guardian provides automated real-time monitoring of DDoS attacks across **al
 - **🔍 Background monitoring task** checks for ongoing attacks every 10 seconds (configurable)
 - **🌍 Monitors ALL zones** in the A10 device, regardless of how they were created
 - **🚨 Detects new attacks** and sends instant notifications (🚨 Attack Detected)
-- **⏱️ Tracks attack duration** and sends notifications when attacks end (✅ Attack Mitigated)
+- **⏱️ Tracks attack duration** and sends notifications when attacks end (✅ Attack Stopped)
 - **⚠️ Optional periodic updates** for long-running attacks (⚠️ Attack Ongoing every 15 min)
 
 ### ⚙️ Configuration
@@ -266,7 +266,7 @@ Enable attack monitoring in `.env`:
 ```bash
 # Attack Monitoring (real-time DDoS attack detection)
 NOTIFY_ATTACK_DETECTED=True       # Alert when DDoS attack is detected
-NOTIFY_ATTACK_MITIGATED=True      # Alert when attack is mitigated/ended
+NOTIFY_ATTACK_MITIGATED=True      # Alert when attack stops
 NOTIFY_ATTACK_ONGOING=False       # Periodic updates for long-running attacks (every 15min)
 ATTACK_MONITORING_INTERVAL=30     # Check for attacks every N seconds (min: 10, max: 300)
 ```
@@ -289,11 +289,11 @@ When `WEBHOOK_ENABLED=true`, attack events are sent to Discord/Slack/n8n:
 }
 ```
 
-**Attack Mitigated:**
+**Attack Stopped:**
 ```json
 {
-  "title": "✅ Attack Mitigated",
-  "description": "Attack on 203.0.113.50 has been mitigated",
+  "title": "✅ Attack Stopped",
+  "description": "Attack on 203.0.113.50 has stopped",
   "color": 65280,  // Green
   "fields": [
     {"name": "Zone", "value": "203.0.113.50"},

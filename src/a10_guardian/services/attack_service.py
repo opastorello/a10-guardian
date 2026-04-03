@@ -156,15 +156,15 @@ class AttackService:
         }
 
         self.notifier.send_notification(
-            title="Attack Mitigated",
-            message=f"Attack on {zone_name} successfully mitigated after {duration_str}",
+            title="Attack Stopped",
+            message=f"Attack on {zone_name} has stopped after {duration_str}",
             level="success",
             fields=fields,
             event_type="attack_mitigated",
         )
 
         logger.bind(audit=True, requester="system").info(
-            f"Action: Attack Mitigated | Target: {zone_name} | Duration: {duration_str} | Incident: {incident_name}"
+            f"Action: Attack Stopped | Target: {zone_name} | Duration: {duration_str} | Incident: {incident_name}"
         )
 
     def notify_attack_ongoing(self, incident: dict, elapsed_seconds: int):

@@ -101,7 +101,7 @@ O sistema envia notificações automaticamente para:
 
 2. **Attack Monitoring**:
    - Attack Detected (ataque detectado)
-   - Attack Mitigated (ataque mitigado)
+   - Attack Stopped (ataque parou)
    - Attack Ongoing (atualizações de ataques longos)
 
 3. **Mitigation Operations**:
