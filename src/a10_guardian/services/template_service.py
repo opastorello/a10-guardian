@@ -92,7 +92,7 @@ class TemplateService:
             services_count = len(template_data["zone_payload"]["port"]["zone_service_list"])
             protection_count = len(template_data["monitor_payload"]["protection_values"])
 
-            logger.bind(audit=True).info(
+            logger.bind(audit=True, requester="system").info(
                 f"Action: {'Update' if is_update else 'Create'} Template | Name: {name} | "
                 f"Services: {services_count} | Protection Values: {protection_count} | "
                 f"Profile: {template_data['zone_payload']['profile_name']} | A10_Validation: PASSED"
@@ -245,7 +245,7 @@ class TemplateService:
 
         try:
             template_path.unlink()
-            logger.bind(audit=True).info(f"Action: Delete Template | Name: {name}")
+            logger.bind(audit=True, requester="system").info(f"Action: Delete Template | Name: {name}")
 
             # Send notification
             if settings.NOTIFY_TEMPLATE_DELETE:

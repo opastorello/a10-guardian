@@ -10,7 +10,8 @@ COPY src/ src/
 RUN pip install --no-cache-dir .
 
 # Logs directory
-RUN mkdir -p logs
+RUN mkdir -p logs config/session
+
 
 EXPOSE 8000 8001
 

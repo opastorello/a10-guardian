@@ -182,13 +182,14 @@ def list_ongoing_attacks() -> str:
 
         client = Container.get_client()
         attack_service = AttackService(client, Container.get_notification_service())
-        incidents = attack_service.get_ongoing_incidents()
+        result = attack_service.get_ongoing_incidents()
+        incident_list = result.get("incidents", [])
 
-        if not incidents:
+        if not incident_list:
             return "No ongoing DDoS attacks detected."
 
-        result = f"Found {len(incidents)} ongoing attack(s):\n"
-        for incident in incidents:
+        result = f"Found {len(incident_list)} ongoing attack(s):\n"
+        for incident in incident_list:
             zone_name = incident.get("zone_name", "N/A")
             attack_type = incident.get("attack_type", "Unknown")
             start_time = incident.get("start_time", "N/A")
@@ -336,7 +337,12 @@ def set_zone_template(template_json: str, name: str = "default") -> str:
         template_data["name"] = name
 
         service = Container.get_template_service()
-        result = service.save_template(template_data, name, is_update=False)
+        try:
+            service.get_template(name)
+            is_update = True
+        except Exception:
+            is_update = False
+        result = service.save_template(template_data, name, is_update=is_update)
 
         return f"✓ Template '{name}' saved successfully!\n{result.get('message', '')}"
     except json.JSONDecodeError as e:

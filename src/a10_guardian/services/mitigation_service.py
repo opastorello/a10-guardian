@@ -307,15 +307,16 @@ class MitigationService:
 
         self.client.delete("/tps/protected_objects/zones/api/?force_delete=false", json_data=payload)
         logger.bind(audit=True, requester="API").info(f"Action: Delete Zone | Target: {ip} | Status: Success")
-        self.notifier.send_notification(
-            title="Mitigation Stopped",
-            message=f"Protection removed (zone was in {mode} mode)",
-            level="error",
-            fields={
-                "IP": ip,
-                "Zone ID": zone_id[:8],
-                "Mode": mode,
-            },
-            event_type="mitigation_stop",
-        )
+        if settings.NOTIFY_MITIGATION_STOP:
+            self.notifier.send_notification(
+                title="Mitigation Stopped",
+                message=f"Protection removed (zone was in {mode} mode)",
+                level="error",
+                fields={
+                    "IP": ip,
+                    "Zone ID": zone_id[:8],
+                    "Mode": mode,
+                },
+                event_type="mitigation_stop",
+            )
         return GenericResponse(message=f"Zone {ip} removed successfully", status="deleted")

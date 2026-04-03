@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, Query
 
-from a10_guardian.core.dependencies import get_attack_service
+from a10_guardian.core.dependencies import get_attack_service, verify_api_token
 from a10_guardian.schemas.attack import (
     IncidentDetailsResponse,
     IncidentStatsResponse,
@@ -10,7 +10,7 @@ from a10_guardian.schemas.attack import (
 )
 from a10_guardian.services.attack_service import AttackService
 
-router = APIRouter(prefix="/attacks", tags=["Attack Monitoring"])
+router = APIRouter(prefix="/attacks", tags=["Attack Monitoring"], dependencies=[Depends(verify_api_token)])
 
 
 @router.get("/ongoing", response_model=OngoingIncidentsResponse, summary="List ongoing DDoS attacks")

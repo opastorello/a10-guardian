@@ -1,6 +1,6 @@
 """API endpoints for zone template management."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -50,8 +50,8 @@ def get_template(name: str, service: TemplateService = Depends(get_template_serv
     return TemplateResponse(
         name=name,
         template=ZoneTemplate(**template_data),
-        created_at=datetime.fromtimestamp(stat.st_ctime).isoformat(),
-        modified_at=datetime.fromtimestamp(stat.st_mtime).isoformat(),
+        created_at=datetime.fromtimestamp(stat.st_ctime, tz=timezone.utc).isoformat(),
+        modified_at=datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
         file_size_kb=round(stat.st_size / 1024, 2),
     )
 

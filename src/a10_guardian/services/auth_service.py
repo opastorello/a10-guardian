@@ -92,9 +92,7 @@ class AuthService:
             else:
                 # Any non-200 (302 to logout, login, or anything else) means session is expired
                 location = response.headers.get("Location", "")
-                logger.warning(
-                    f"Cached session expired (status={response.status_code}, location={location})"
-                )
+                logger.warning(f"Cached session expired (status={response.status_code}, location={location})")
                 return False
 
         except requests.RequestException:

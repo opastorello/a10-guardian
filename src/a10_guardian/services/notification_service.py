@@ -110,6 +110,7 @@ class NotificationService:
                 logger.error(f"Failed to send webhook notification: {e}")
 
     def _build_discord_payload(self, title: str, message: str, cfg: dict, fields: dict[str, str] | None) -> dict:
+        fields = dict(fields) if fields else None
         ip = fields.pop("IP", None) if fields else None
 
         description = message

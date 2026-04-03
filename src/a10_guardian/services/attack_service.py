@@ -7,6 +7,21 @@ from a10_guardian.core.config import settings
 from a10_guardian.services.notification_service import NotificationService
 
 
+def _format_duration(seconds: int) -> str:
+    """Format a duration in seconds to a human-readable string.
+
+    Examples: 45 -> "45s", 330 -> "5m 30s", 3900 -> "1h 5m"
+    """
+    if seconds < 60:
+        return f"{seconds}s"
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    if hours > 0:
+        return f"{hours}h {minutes}m"
+    secs = seconds % 60
+    return f"{minutes}m {secs}s" if secs > 0 else f"{minutes}m"
+
+
 class AttackService:
     """Monitors DDoS attacks/incidents and sends real-time notifications."""
 
@@ -114,7 +129,7 @@ class AttackService:
             event_type="attack_detected",
         )
 
-        logger.bind(audit=True).warning(
+        logger.bind(audit=True, requester="system").warning(
             f"Action: Attack Detected | Target: {zone_name} | Type: {attack_type} | Incident: {incident_name}"
         )
 
@@ -132,10 +147,7 @@ class AttackService:
         attack_type = incident.get("attack_type", "Unknown")
         incident_name = incident.get("name", "N/A")
 
-        # Format duration
-        hours = duration_seconds // 3600
-        minutes = (duration_seconds % 3600) // 60
-        duration_str = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+        duration_str = _format_duration(duration_seconds)
 
         fields = {
             "Target IP": zone_name,
@@ -151,7 +163,7 @@ class AttackService:
             event_type="attack_mitigated",
         )
 
-        logger.bind(audit=True).info(
+        logger.bind(audit=True, requester="system").info(
             f"Action: Attack Mitigated | Target: {zone_name} | Duration: {duration_str} | Incident: {incident_name}"
         )
 
@@ -169,9 +181,7 @@ class AttackService:
         attack_type = incident.get("attack_type", "Unknown")
         incident_name = incident.get("name", "N/A")
 
-        hours = elapsed_seconds // 3600
-        minutes = (elapsed_seconds % 3600) // 60
-        duration_str = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+        duration_str = _format_duration(elapsed_seconds)
 
         fields = {
             "Target IP": zone_name,
@@ -188,6 +198,6 @@ class AttackService:
             event_type="attack_ongoing",
         )
 
-        logger.bind(audit=True).warning(
+        logger.bind(audit=True, requester="system").warning(
             f"Action: Attack Ongoing | Target: {zone_name} | Duration: {duration_str} | Incident: {incident_name}"
         )
