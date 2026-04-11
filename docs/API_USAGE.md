@@ -31,6 +31,36 @@ curl -X GET "http://localhost:8000/api/v1/mitigation/zones/status/38.3.165.23" \
   -H "x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
 ```
 
+#### 5. Verificar se IP está sob ataque
+
+Recebe qualquer IP e verifica automaticamente o bloco `/24` correspondente.
+
+```bash
+curl -X GET "http://localhost:8000/api/v1/mitigation/under-attack/181.215.253.2" \
+  -H "x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+```
+
+**Resposta — bloco monitorado sem ataque:**
+```json
+{"under_attack": false, "monitored": true, "ip": "181.215.253.2", "block": "181.215.253.0-255"}
+```
+
+**Resposta — bloco sob ataque:**
+```json
+{"under_attack": true, "monitored": true, "ip": "181.215.253.2", "block": "181.215.253.0-255"}
+```
+
+**Resposta — bloco não monitorado:**
+```json
+{"under_attack": false, "monitored": false, "ip": "1.2.3.4", "block": "1.2.3.0-255"}
+```
+
+**PowerShell:**
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8000/api/v1/mitigation/under-attack/181.215.253.2" `
+  -Headers @{ "x-api-token" = "SEU_TOKEN" }
+```
+
 #### 5. Remover Mitigação
 ```bash
 curl -X DELETE "http://localhost:8000/api/v1/mitigation/zones/remove/38.3.165.23" \

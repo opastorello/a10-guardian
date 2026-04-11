@@ -73,6 +73,23 @@ Replace the command with:
 
 ---
 
+## 💻 Setup: Claude Code (streamable-http)
+
+```bash
+claude mcp add a10-guardian --transport http http://<host>:8001/mcp \
+  --header "Authorization: Bearer <API_SECRET_TOKEN>"
+```
+
+Verify the connection:
+
+```bash
+claude mcp list
+```
+
+The server should show `✓ Connected`.
+
+---
+
 ## 🌐 Setup: n8n / HTTP Clients (streamable-http)
 
 ### Option 1: Docker Compose
@@ -114,14 +131,17 @@ Requests without a valid token receive `401 Unauthorized`.
 
 ## 🛠️ Available Tools
 
-The MCP server exposes 9 tools for AI agents:
+The MCP server exposes 12 tools for AI agents:
 
 ### 🖥️ System & Monitoring
 
 | Tool | Description | Example Usage |
 |------|-------------|---------------|
 | **`get_system_health()`** | Check if A10 device is online (hostname, uptime) | "What is the health status of the A10 system?" |
+| **`get_system_devices()`** | List all devices in the A10 inventory | "What devices are registered?" |
+| **`get_system_license()`** | License type, limits, and expiration | "When does the license expire?" |
 | **`list_active_mitigations()`** | List all IPs currently under mitigation | "Which IPs are being mitigated right now?" |
+| **`list_ongoing_attacks()`** | List all DDoS attacks currently being mitigated | "Are there any ongoing attacks?" |
 | **`get_zone_status(ip_address)`** | Full config and status of specific zone | "Show me the status of zone 203.0.113.5" |
 
 ### 🛡️ Mitigation Management

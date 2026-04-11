@@ -176,6 +176,7 @@ All endpoints require the `x-api-token` header. Interactive docs available at `/
 | POST | `/api/v1/mitigation/zones/mitigate/{ip}?template=default` | Create/deploy zone using specified template |
 | GET | `/api/v1/mitigation/zones/list` | Paginated list of zones |
 | GET | `/api/v1/mitigation/zones/status/{ip}` | Full zone config by IP |
+| GET | `/api/v1/mitigation/under-attack/{ip}` | Check if the /24 block of a given IP is under attack |
 | DELETE | `/api/v1/mitigation/zones/remove/{ip}` | Stop mitigation and delete zone |
 
 ### 📝 Templates
@@ -456,14 +457,17 @@ NOTIFY_TEMPLATE_CREATE=true
 
 ## 🤖 MCP Integration
 
-The MCP server exposes 9 tools for AI agents:
+The MCP server exposes 12 tools for AI agents:
 
 #### 🖥️ System & Monitoring
 
 | Tool                                 | Description                                           |
 |--------------------------------------|-------------------------------------------------------|
 | `get_system_health()`                | Check if the A10 device is online                     |
+| `get_system_devices()`               | List all devices in the A10 inventory                 |
+| `get_system_license()`               | License type, limits, and expiration                  |
 | `list_active_mitigations()`          | List all IPs currently under mitigation               |
+| `list_ongoing_attacks()`             | List all DDoS attacks currently being mitigated       |
 | `get_zone_status(ip_address)`        | Full config and status of a specific zone             |
 
 #### 🛡️ Mitigation Management
@@ -481,6 +485,13 @@ The MCP server exposes 9 tools for AI agents:
 | `get_zone_template(name)`                | Retrieve template configuration                          |
 | `set_zone_template(template_json, name)` | Create/update template with validation                   |
 | `import_zone_template(ip_address, name)` | Import template from existing A10 zone                   |
+
+### Connecting via Claude Code (HTTP)
+
+```bash
+claude mcp add a10-guardian --transport http http://<host>:8001/mcp \
+  --header "Authorization: Bearer <API_SECRET_TOKEN>"
+```
 
 ### Connecting via n8n (HTTP)
 
