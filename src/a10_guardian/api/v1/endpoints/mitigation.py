@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from a10_guardian.core.dependencies import get_mitigation_service, verify_api_token
 from a10_guardian.schemas.common import GenericResponse
-from a10_guardian.schemas.mitigation import ZoneListResponse, ZoneStatusResponse
+from a10_guardian.schemas.mitigation import UnderAttackResponse, ZoneListResponse, ZoneStatusResponse
 from a10_guardian.services.mitigation_service import MitigationService
 
 router = APIRouter(prefix="/mitigation", tags=["Mitigation"], dependencies=[Depends(verify_api_token)])
@@ -61,6 +61,21 @@ def get_zone_status(ip: str, service: MitigationService = Depends(get_mitigation
         return result
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get(
+    "/under-attack/{ip}",
+    response_model=UnderAttackResponse,
+    summary="Under Attack Check",
+    description="Returns whether the /24 block of a given IP is currently under attack (operational_mode=mitigation).",
+)
+def under_attack(ip: str, service: MitigationService = Depends(get_mitigation_service)):
+    try:
+        return service.is_under_attack(ip)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
 

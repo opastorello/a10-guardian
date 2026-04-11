@@ -282,6 +282,31 @@ class MitigationService:
         payload = monitor_config.model_dump() if hasattr(monitor_config, "model_dump") else monitor_config
         return self.client.post(url, json_data=payload)
 
+    def is_under_attack(self, ip: str) -> dict:
+        """Checks if the /24 block of a given IP is currently under attack (mitigation mode).
+
+        Args:
+            ip (str): Any IP address (e.g. 181.215.253.2).
+
+        Returns:
+            dict: {"under_attack": bool, "ip": str, "block": str}
+        """
+        parts = ip.strip().split(".")
+        if len(parts) != 4:
+            raise ValueError(f"Invalid IP address: {ip}")
+
+        block = f"{parts[0]}.{parts[1]}.{parts[2]}.0-255"
+
+        response = self.client.get("/tps/protected_objects/zones/api/?page=1&items=1000")
+        zones = response.get("object_list", [])
+
+        for zone in zones:
+            if zone.get("zone_name") == block:
+                under_attack = zone.get("operational_mode") == "mitigation"
+                return {"under_attack": under_attack, "monitored": True, "ip": ip, "block": block}
+
+        return {"under_attack": False, "monitored": False, "ip": ip, "block": block}
+
     def remove_zone(self, ip: str) -> GenericResponse:
         """Removes a protected zone by IP address.
 

@@ -20,3 +20,10 @@ class ZoneListResponse(BaseModel):
     page: int = Field(..., json_schema_extra={"example": 1})
     items: int = Field(..., json_schema_extra={"example": 40})
     zones: list[ZoneListItem] = Field(default_factory=list)
+
+
+class UnderAttackResponse(BaseModel):
+    under_attack: bool = Field(..., json_schema_extra={"example": True})
+    monitored: bool = Field(..., json_schema_extra={"example": True})
+    ip: str = Field(..., json_schema_extra={"example": "181.215.253.2"})
+    block: str = Field(..., json_schema_extra={"example": "181.215.253.0-255"})
