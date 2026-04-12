@@ -4,7 +4,6 @@ import sys
 
 from fastmcp import FastMCP
 from loguru import logger
-from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
@@ -62,9 +61,9 @@ class BearerTokenMiddleware(BaseHTTPMiddleware):
 
 
 # Auth: simple Bearer token middleware for HTTP transports (stdio doesn't need auth)
-_middleware: list[Middleware] = []
+_middleware: list = []
 if MCP_TRANSPORT != "stdio" and settings.MCP_SECRET_TOKEN:
-    _middleware.append(Middleware(BearerTokenMiddleware))
+    _middleware.append(BearerTokenMiddleware)
     logger.info("MCP HTTP auth enabled (Bearer token required)")
 
 # Create MCP Server
