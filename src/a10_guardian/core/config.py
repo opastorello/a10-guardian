@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +34,14 @@ class Settings(BaseSettings):
             "Empty = deny all cross-origin requests."
         ),
     )
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: object) -> object:
+        """Accept comma-separated string or JSON array."""
+        if isinstance(v, str) and v.strip() and not v.strip().startswith("["):
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
+        return v
 
     # App Config
     DEBUG: bool = Field(default=False)
