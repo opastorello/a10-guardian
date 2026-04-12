@@ -3,8 +3,10 @@ import re
 import sys
 
 from fastmcp import FastMCP
-from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 from loguru import logger
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
 from a10_guardian.core.client import A10Client
 from a10_guardian.core.config import settings
@@ -41,21 +43,32 @@ MCP_TRANSPORT = os.environ.get("MCP_TRANSPORT", "stdio")
 MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.environ.get("MCP_PORT", "8001"))
 
-# Auth: Bearer token only for HTTP transports (stdio doesn't need auth)
-auth_provider = None
-if MCP_TRANSPORT != "stdio":
-    auth_provider = StaticTokenVerifier(
-        tokens={
-            settings.MCP_SECRET_TOKEN: {
-                "client_id": "mcp-client",
-                "scopes": ["admin"],
-            }
-        }
-    )
+
+class BearerTokenMiddleware(BaseHTTPMiddleware):
+    """Simple Bearer token auth — no OAuth2 flow, compatible with mcp-remote and Claude Desktop."""
+
+    async def dispatch(self, request, call_next):
+        if request.url.path == "/":
+            return await call_next(request)
+        auth = request.headers.get("Authorization", "")
+        token = auth.removeprefix("Bearer ").strip()
+        if not token or token != settings.MCP_SECRET_TOKEN:
+            return JSONResponse(
+                {"error": "unauthorized", "error_description": "Valid Bearer token required."},
+                status_code=401,
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return await call_next(request)
+
+
+# Auth: simple Bearer token middleware for HTTP transports (stdio doesn't need auth)
+_middleware: list[Middleware] = []
+if MCP_TRANSPORT != "stdio" and settings.MCP_SECRET_TOKEN:
+    _middleware.append(Middleware(BearerTokenMiddleware))
     logger.info("MCP HTTP auth enabled (Bearer token required)")
 
 # Create MCP Server
-mcp = FastMCP("A10 Guardian", auth=auth_provider)
+mcp = FastMCP("A10 Guardian", middleware=_middleware)
 
 # Landing page for HTTP transport (GET /)
 if MCP_TRANSPORT != "stdio":
