@@ -291,6 +291,6 @@ Agents can query attack status via:
 ## 📚 Additional Resources
 
 - [Main README](../README.md) - Full project documentation
-- [Template System](../config/zone_templates/README.md) - Template configuration guide
+- [API Usage Guide](API_USAGE.md) - REST API usage guide
 - [FastMCP Documentation](https://github.com/jlowin/fastmcp) - MCP framework details
 - [Model Context Protocol Spec](https://modelcontextprotocol.io/) - Official MCP specification

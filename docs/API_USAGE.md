@@ -3,7 +3,7 @@
 ## API REST (Recomendado para uso direto)
 
 Base URL: `http://localhost:8000/api/v1/`
-Header: `x-api-token: <seu_token>`
+Header: `x-api-token: <YOUR_API_TOKEN>`
 
 ### Perfis de Token
 
@@ -66,7 +66,7 @@ curl -X GET "http://localhost:8000/api/v1/mitigation/under-attack/181.215.253.2"
 **PowerShell:**
 ```powershell
 Invoke-RestMethod -Uri "http://localhost:8000/api/v1/mitigation/under-attack/181.215.253.2" `
-  -Headers @{ "x-api-token" = "SEU_TOKEN" }
+  -Headers @{ "x-api-token" = "<YOUR_API_TOKEN>" }
 ```
 
 #### 5. Remover Mitigação

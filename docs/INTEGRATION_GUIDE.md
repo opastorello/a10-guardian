@@ -4,7 +4,7 @@
 
 ```
 Base URL: http://localhost:8000/api/v1
-Token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN
+Token: <YOUR_API_SECRET_TOKEN>
 Header: x-api-token
 ```
 
@@ -17,7 +17,7 @@ Header: x-api-token
 1. **Criar Credencial HTTP Header Auth:**
    - Nome: `A10 Guardian API`
    - Header Name: `x-api-token`
-   - Header Value: `plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN`
+   - Header Value: `<YOUR_API_SECRET_TOKEN>`
 
 ### Exemplos de Workflows
 
@@ -148,7 +148,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> dict:
     import httpx
 
     base_url = "http://localhost:8000/api/v1"
-    headers = {"x-api-token": "plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"}
+    headers = {"x-api-token": "<YOUR_API_SECRET_TOKEN>"}
 
     if tool_name == "get_system_health":
         response = httpx.get(f"{base_url}/system/info", headers=headers)
@@ -259,7 +259,7 @@ for part in response.parts:
 URL: http://localhost:8000/api/v1/mitigation/zones/mitigate/{{IP}}?template=default
 Method: POST
 Headers:
-  - x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN
+  - x-api-token: <YOUR_API_SECRET_TOKEN>
 ```
 
 ---
@@ -273,7 +273,7 @@ Headers:
 **Headers:**
 ```json
 {
-  "x-api-token": "plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+  "x-api-token": "<YOUR_API_SECRET_TOKEN>"
 }
 ```
 
@@ -288,7 +288,7 @@ Headers:
   "method": "POST",
   "uri": "http://localhost:8000/api/v1/mitigation/zones/mitigate/@{variables('IP')}?template=default",
   "headers": {
-    "x-api-token": "plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+    "x-api-token": "<YOUR_API_SECRET_TOKEN>"
   }
 }
 ```
@@ -303,7 +303,7 @@ from typing import Optional, Dict, Any
 
 class A10Guardian:
     def __init__(self, base_url: str = "http://localhost:8000/api/v1",
-                 api_token: str = "plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"):
+                 api_token: str = "<YOUR_API_SECRET_TOKEN>"):
         self.base_url = base_url
         self.headers = {"x-api-token": api_token}
 
@@ -393,3 +393,4 @@ cloudflared tunnel --url http://localhost:8000
 - API Docs: http://localhost:8000/docs
 - Health Check: http://localhost:8000/health
 - Logs: `docker compose logs api -f`
+- GitHub Issues: https://github.com/opastorello/a10-guardian/issues
