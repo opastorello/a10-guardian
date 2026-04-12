@@ -8,6 +8,7 @@ def _is_debug() -> bool:
     """Lazy import to avoid circular dependency with config."""
     try:
         from a10_guardian.core.config import settings
+
         return settings.DEBUG
     except Exception:
         return False
