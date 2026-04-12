@@ -283,13 +283,17 @@ class MitigationService:
         return self.client.post(url, json_data=payload)
 
     def is_under_attack(self, ip: str) -> dict:
-        """Checks if the /24 block of a given IP is currently under attack (mitigation mode).
+        """Checks if the /24 block of a given IP is currently under attack.
+
+        A zone is considered under attack if:
+        1. Its operational_mode is "mitigation" (auto-mitigation active), OR
+        2. There is an ongoing incident for that zone (attack detected in monitor mode)
 
         Args:
             ip (str): Any IP address (e.g. 181.215.253.2).
 
         Returns:
-            dict: {"under_attack": bool, "ip": str, "block": str}
+            dict: {"under_attack": bool, "monitored": bool, "ip": str, "block": str}
         """
         parts = ip.strip().split(".")
         if len(parts) != 4:
@@ -297,15 +301,38 @@ class MitigationService:
 
         block = f"{parts[0]}.{parts[1]}.{parts[2]}.0-255"
 
+        # Check 1: zone operational_mode
         response = self.client.get("/tps/protected_objects/zones/api/?page=1&items=1000")
         zones = response.get("object_list", [])
 
+        monitored = False
+        in_mitigation_mode = False
         for zone in zones:
             if zone.get("zone_name") == block:
-                under_attack = zone.get("operational_mode") == "mitigation"
-                return {"under_attack": under_attack, "monitored": True, "ip": ip, "block": block}
+                monitored = True
+                in_mitigation_mode = zone.get("operational_mode") == "mitigation"
+                break
 
-        return {"under_attack": False, "monitored": False, "ip": ip, "block": block}
+        if in_mitigation_mode:
+            return {"under_attack": True, "monitored": True, "ip": ip, "block": block}
+
+        if not monitored:
+            return {"under_attack": False, "monitored": False, "ip": ip, "block": block}
+
+        # Check 2: ongoing incidents for this zone (zone in monitor mode but attack active)
+        try:
+            inc_response = self.client.get(
+                "/tps/zone/incident/ongoing/json/",
+                params={"page": 1, "items": 100, "tps_incident_active": "Ongoing"},
+            )
+            for incident in inc_response.get("object_list", []):
+                zone_name = incident.get("zone") or incident.get("zone_name", "")
+                if zone_name == block:
+                    return {"under_attack": True, "monitored": True, "ip": ip, "block": block}
+        except Exception:
+            pass  # If incidents check fails, fall back to operational_mode result
+
+        return {"under_attack": False, "monitored": True, "ip": ip, "block": block}
 
     def remove_zone(self, ip: str) -> GenericResponse:
         """Removes a protected zone by IP address.

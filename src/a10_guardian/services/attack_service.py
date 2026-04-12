@@ -50,7 +50,21 @@ class AttackService:
             response = self.client.get("/tps/zone/incident/ongoing/json/", params=params)
 
             total = response.get("total", 0)
-            incidents = response.get("object_list", [])
+            raw_incidents = response.get("object_list", [])
+
+            # Normalize A10 field names → schema field names
+            # A10 returns: name, zone, zone_id, severity, start_time, status
+            incidents = [
+                {
+                    "incident_id": inc.get("name") or inc.get("incident_id", ""),
+                    "zone_name": inc.get("zone") or inc.get("zone_name", ""),
+                    "zone_id": inc.get("zone_id"),
+                    "severity": inc.get("severity"),
+                    "start_time": inc.get("start_time"),
+                    "status": inc.get("status"),
+                }
+                for inc in raw_incidents
+            ]
 
             logger.info(f"Fetched {len(incidents)} ongoing incidents (total: {total})")
 
