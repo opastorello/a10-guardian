@@ -14,7 +14,22 @@ class Settings(BaseSettings):
 
     # Security
     A10_VERIFY_SSL: bool = Field(default=False, description="Verify SSL Certificates")
-    API_SECRET_TOKEN: str = Field(..., description="API Key for this wrapper")
+    API_SECRET_TOKEN: str = Field(..., description="Internal master API key — full access, all scopes")
+    MCP_SECRET_TOKEN: str = Field(..., description="MCP server API key — full access, dedicated token for MCP clients")
+    API_TOKENS: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description=(
+            "Additional API tokens with granular scopes. JSON in .env.\n"
+            "Available scopes: system:read, mitigation:read, mitigation:write, "
+            "templates:read, templates:write, attacks:read\n"
+            'Example: API_TOKENS={"tok_ro": ["mitigation:read","templates:read"], '
+            '"tok_mit": ["mitigation:read","mitigation:write"]}'
+        ),
+    )
+    CORS_ORIGINS: list[str] = Field(
+        default=[],
+        description="Allowed CORS origins (comma-separated in .env, e.g. https://app.example.com,https://admin.example.com). Empty = deny all cross-origin requests.",
+    )
 
     # App Config
     DEBUG: bool = Field(default=False)

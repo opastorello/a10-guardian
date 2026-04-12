@@ -79,8 +79,20 @@ curl -X POST http://localhost:8000/api/v1/mitigation/zones/mitigate/192.0.2.100?
 Todas as requisições requerem o header de autenticação:
 
 ```
-x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN
+x-api-token: SEU_TOKEN
 ```
+
+### Perfis de Token
+
+| Token | Variável | Scopes | Uso |
+|-------|----------|--------|-----|
+| Interno / Equipe | `API_SECRET_TOKEN` | todos | Acesso completo — uso interno |
+| MCP / AI Agents | `MCP_SECRET_TOKEN` | todos | Claude, n8n, automações — token dedicado |
+| Sites externos | `API_TOKENS` (JSON) | configurável | Integrações read-only, parceiros |
+
+**Scopes disponíveis:** `system:read`, `mitigation:read`, `mitigation:write`, `templates:read`, `templates:write`, `attacks:read`
+
+**Proteção brute-force:** 10 tentativas falhas por IP em 60 segundos → HTTP 429.
 
 ---
 
@@ -138,10 +150,10 @@ pip install httpx
 import httpx
 
 class A10Guardian:
-    def __init__(self):
+    def __init__(self, token: str):
         self.base_url = "http://localhost:8000/api/v1"
         self.headers = {
-            "x-api-token": "plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+            "x-api-token": token
         }
 
     def mitigate_ip(self, ip: str, template: str = "default"):

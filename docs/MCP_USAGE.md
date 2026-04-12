@@ -46,7 +46,8 @@ Add the following entry under `mcpServers`:
       "env": {
         "A10_USERNAME": "admin",
         "A10_PASSWORD": "your_password",
-        "API_SECRET_TOKEN": "your_token",
+        "API_SECRET_TOKEN": "your_internal_token",
+        "MCP_SECRET_TOKEN": "your_mcp_token",
         "A10_BASE_URL": "https://your-a10-host:17489"
       }
     }
@@ -77,7 +78,7 @@ Replace the command with:
 
 ```bash
 claude mcp add a10-guardian --transport http http://<host>:8001/mcp \
-  --header "Authorization: Bearer <API_SECRET_TOKEN>"
+  --header "Authorization: Bearer <MCP_SECRET_TOKEN>"
 ```
 
 Verify the connection:
@@ -114,7 +115,7 @@ Add an **MCP Client Tool** node with:
 
 - **URL:** `http://<host>:8001/mcp`
 - **Authentication:** Bearer Token
-- **Token:** Your `API_SECRET_TOKEN` from `.env`
+- **Token:** Your `MCP_SECRET_TOKEN` from `.env`
 
 ---
 
@@ -123,9 +124,9 @@ Add an **MCP Client Tool** node with:
 | Transport | Authentication | Header |
 |-----------|----------------|--------|
 | **stdio** | None (local connection) | — |
-| **streamable-http** | Bearer token required | `Authorization: Bearer <API_SECRET_TOKEN>` |
+| **streamable-http** | Bearer token required | `Authorization: Bearer <MCP_SECRET_TOKEN>` |
 
-Requests without a valid token receive `401 Unauthorized`.
+Use the **dedicated `MCP_SECRET_TOKEN`** — do not reuse `API_SECRET_TOKEN` across interfaces. Requests without a valid token receive `401 Unauthorized`.
 
 ---
 
@@ -272,7 +273,7 @@ Agents can query attack status via:
 
 **Solution:**
 - Verify `Authorization: Bearer <token>` header is set
-- Confirm `API_SECRET_TOKEN` matches `.env` value
+- Confirm `MCP_SECRET_TOKEN` matches `.env` value (use `MCP_SECRET_TOKEN`, not `API_SECRET_TOKEN`)
 - Check token doesn't have leading/trailing spaces
 
 ### Tool Execution Errors

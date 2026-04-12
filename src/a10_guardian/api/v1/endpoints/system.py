@@ -2,11 +2,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from a10_guardian.core.dependencies import get_system_service, verify_api_token
+from a10_guardian.core.dependencies import get_system_service, require_scope
 from a10_guardian.schemas.system import DeviceListResponse, LicenseInfo, SystemInfoResponse
 from a10_guardian.services.system_service import SystemService
 
-router = APIRouter(prefix="/system", tags=["System"], dependencies=[Depends(verify_api_token)])
+router = APIRouter(prefix="/system", tags=["System"])
 
 
 @router.get(
@@ -14,6 +14,7 @@ router = APIRouter(prefix="/system", tags=["System"], dependencies=[Depends(veri
     response_model=SystemInfoResponse,
     summary="System Info",
     description="Retrieve hostname, version, serial number, and uptime from the A10 device.",
+    dependencies=[Depends(require_scope("system:read"))],
 )
 def get_system_info(service: SystemService = Depends(get_system_service)):
     try:
@@ -27,6 +28,7 @@ def get_system_info(service: SystemService = Depends(get_system_service)):
     response_model=DeviceListResponse | list[Any],
     summary="Device List",
     description="List all devices in the A10 inventory with model, firmware, serial, and IP.",
+    dependencies=[Depends(require_scope("system:read"))],
 )
 def get_device_list(service: SystemService = Depends(get_system_service)):
     try:
@@ -40,6 +42,7 @@ def get_device_list(service: SystemService = Depends(get_system_service)):
     response_model=LicenseInfo,
     summary="License Info",
     description="License type, maximum devices/objects, and expiration date.",
+    dependencies=[Depends(require_scope("system:read"))],
 )
 def get_license_status(service: SystemService = Depends(get_system_service)):
     try:

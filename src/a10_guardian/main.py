@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -326,6 +327,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# CORS — restrict to configured origins only (empty = deny all cross-origin requests)
+_cors_origins = [o.strip() for o in settings.CORS_ORIGINS if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=False,  # API uses x-api-token header, not cookies — credentials not needed
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["x-api-token", "content-type"],
+    max_age=600,
+)
+
 # Rate Limiting
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -355,7 +367,7 @@ def health_check(check_upstream: bool = False, client: A10Client = Depends(get_a
             client.connect()
             status["upstream"] = "connected"
         except Exception as e:
+            logger.error(f"Upstream health check failed: {e}")
             status["upstream"] = "down"
-            status["error"] = str(e)
-            raise HTTPException(status_code=503, detail=status) from e
+            raise HTTPException(status_code=503, detail={"status": "error", "app": "up", "upstream": "down"}) from e
     return status

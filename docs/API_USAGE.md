@@ -3,32 +3,40 @@
 ## API REST (Recomendado para uso direto)
 
 Base URL: `http://localhost:8000/api/v1/`
-Token: `plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN`
+Header: `x-api-token: <seu_token>`
+
+### Perfis de Token
+
+| Token | Scopes | Uso |
+|-------|--------|-----|
+| `API_SECRET_TOKEN` | todos | Uso interno — acesso completo |
+| `MCP_SECRET_TOKEN` | todos | MCP / AI agents — token dedicado |
+| `tok_*` via `API_TOKENS` | configurável | Sites externos / parceiros (ex: `mitigation:read`) |
 
 ### Endpoints Disponíveis
 
 #### 1. System Health
 ```bash
 curl -X GET "http://localhost:8000/api/v1/system/info" \
-  -H "x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+  -H "x-api-token: SEU_API_SECRET_TOKEN"
 ```
 
 #### 2. Listar Mitigações Ativas
 ```bash
 curl -X GET "http://localhost:8000/api/v1/mitigation/zones/list?page=1&items=10" \
-  -H "x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+  -H "x-api-token: SEU_API_SECRET_TOKEN"
 ```
 
 #### 3. Mitigar IP
 ```bash
 curl -X POST "http://localhost:8000/api/v1/mitigation/zones/mitigate/38.3.165.23?template=default" \
-  -H "x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+  -H "x-api-token: SEU_API_SECRET_TOKEN"
 ```
 
 #### 4. Status de Zona
 ```bash
 curl -X GET "http://localhost:8000/api/v1/mitigation/zones/status/38.3.165.23" \
-  -H "x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+  -H "x-api-token: SEU_API_SECRET_TOKEN"
 ```
 
 #### 5. Verificar se IP está sob ataque
@@ -37,7 +45,7 @@ Recebe qualquer IP e verifica automaticamente o bloco `/24` correspondente.
 
 ```bash
 curl -X GET "http://localhost:8000/api/v1/mitigation/under-attack/181.215.253.2" \
-  -H "x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+  -H "x-api-token: SEU_API_SECRET_TOKEN"
 ```
 
 **Resposta — bloco monitorado sem ataque:**
@@ -64,13 +72,13 @@ Invoke-RestMethod -Uri "http://localhost:8000/api/v1/mitigation/under-attack/181
 #### 5. Remover Mitigação
 ```bash
 curl -X DELETE "http://localhost:8000/api/v1/mitigation/zones/remove/38.3.165.23" \
-  -H "x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+  -H "x-api-token: SEU_API_SECRET_TOKEN"
 ```
 
 #### 6. Listar Templates
 ```bash
 curl -X GET "http://localhost:8000/api/v1/templates/list" \
-  -H "x-api-token: plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+  -H "x-api-token: SEU_API_SECRET_TOKEN"
 ```
 
 ## Integração com Aplicações
@@ -80,7 +88,7 @@ curl -X GET "http://localhost:8000/api/v1/templates/list" \
 import httpx
 
 API_URL = "http://localhost:8000/api/v1"
-API_TOKEN = "plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN"
+API_TOKEN = "SEU_API_SECRET_TOKEN"
 
 headers = {"x-api-token": API_TOKEN}
 
@@ -102,7 +110,7 @@ print(response.json())
 ### JavaScript/Node.js
 ```javascript
 const API_URL = "http://localhost:8000/api/v1";
-const API_TOKEN = "plCQr3SiHOLOYbe0bwL8o9u8qINwvEsuJ5dnAVWM8L8pETMh7R0FXtK91AOBwKYN";
+const API_TOKEN = "SEU_API_SECRET_TOKEN";
 
 // Mitigar IP
 fetch(`${API_URL}/mitigation/zones/mitigate/192.0.2.100?template=default`, {

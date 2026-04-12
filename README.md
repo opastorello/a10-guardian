@@ -96,7 +96,8 @@ docker run -d \
 A10_USERNAME=admin                               # A10 device username
 A10_PASSWORD=your_password                       # A10 device password
 A10_BASE_URL=https://your-a10-host:17489       # A10 device URL
-API_SECRET_TOKEN=your_secret_token              # API authentication token
+API_SECRET_TOKEN=your_internal_token            # Internal master token — full access
+MCP_SECRET_TOKEN=your_mcp_token                 # Dedicated MCP token — full access
 
 # Optional - Webhooks
 WEBHOOK_ENABLED=true                            # Enable webhook notifications
@@ -490,7 +491,7 @@ The MCP server exposes 12 tools for AI agents:
 
 ```bash
 claude mcp add a10-guardian --transport http http://<host>:8001/mcp \
-  --header "Authorization: Bearer <API_SECRET_TOKEN>"
+  --header "Authorization: Bearer <MCP_SECRET_TOKEN>"
 ```
 
 ### Connecting via n8n (HTTP)
@@ -499,7 +500,7 @@ Use the **MCP Client Tool** node with:
 
 - **URL:** `http://<host>:8001/mcp`
 - **Authentication:** Bearer Token
-- **Token:** Your `API_SECRET_TOKEN` value
+- **Token:** Your `MCP_SECRET_TOKEN` value
 
 ### Connecting via Claude Desktop (stdio)
 
@@ -515,7 +516,8 @@ Add to your `claude_desktop_config.json`:
       "env": {
         "A10_USERNAME": "admin",
         "A10_PASSWORD": "your_password",
-        "API_SECRET_TOKEN": "your_token",
+        "API_SECRET_TOKEN": "your_internal_token",
+        "MCP_SECRET_TOKEN": "your_mcp_token",
         "A10_BASE_URL": "https://your-a10-host:17489"
       }
     }
@@ -530,9 +532,37 @@ See [docs/MCP_USAGE.md](docs/MCP_USAGE.md) for the full MCP integration guide.
 | Interface | Header | Format |
 |-----------|--------|--------|
 | REST API | `x-api-token` | Plain token value |
-| MCP (HTTP) | `Authorization` | `Bearer <token>` |
+| MCP (HTTP) | `Authorization` | `Bearer <MCP_SECRET_TOKEN>` |
 
-Both use the same `API_SECRET_TOKEN` from `.env`.
+### Token Profiles
+
+A10 Guardian supports **multiple tokens with granular scopes**. Configure them in `.env`:
+
+| Token | Variable | Scopes | Use Case |
+|-------|----------|--------|----------|
+| Internal / Team | `API_SECRET_TOKEN` | all | Full API access — internal team |
+| MCP clients | `MCP_SECRET_TOKEN` | all | Dedicated token for Claude, n8n, AI agents |
+| External sites | `API_TOKENS` (JSON) | configurable | Read-only embeds, partner integrations |
+
+**Available scopes:** `system:read`, `mitigation:read`, `mitigation:write`, `templates:read`, `templates:write`, `attacks:read`
+
+**Example — read-only token for an external website:**
+```bash
+# .env
+API_TOKENS={"tok_mysite": ["mitigation:read"]}
+```
+```bash
+# Can call:
+GET /api/v1/mitigation/under-attack/{ip}   ✅
+GET /api/v1/mitigation/zones/list          ✅
+GET /api/v1/mitigation/zones/status/{ip}   ✅
+
+# Blocked:
+POST /api/v1/mitigation/zones/mitigate     ❌ 403
+DELETE /api/v1/mitigation/zones/remove     ❌ 403
+```
+
+**Brute-force protection:** 10 failed attempts per IP per 60 seconds → 429 Too Many Requests.
 
 ## ⚙️ Environment Variables
 
@@ -544,7 +574,10 @@ Both use the same `API_SECRET_TOKEN` from `.env`.
 | `A10_BASE_URL` | Full URL to A10 device | `https://A10_HOST:A10_PORT` |
 | `A10_VERIFY_SSL` | Verify SSL certificates | `False` |
 | **API Settings** | | |
-| `API_SECRET_TOKEN` | Auth token for API and MCP | *required* |
+| `API_SECRET_TOKEN` | Internal master token — full access, all scopes | *required* |
+| `MCP_SECRET_TOKEN` | Dedicated token for MCP clients (Claude, n8n) — full access | *required* |
+| `API_TOKENS` | Additional tokens with granular scopes (JSON) | `{}` |
+| `CORS_ORIGINS` | Allowed CORS origins, comma-separated | `""` (block all) |
 | `DEBUG` | Enable debug mode | `False` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 | `RATE_LIMIT_DEFAULT` | API rate limit | `60/minute` |

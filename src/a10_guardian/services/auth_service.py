@@ -1,9 +1,11 @@
+import base64
 import json
 import os
 import re
 
 import requests
 import urllib3
+from cryptography.fernet import Fernet, InvalidToken
 from loguru import logger
 
 from a10_guardian.core.config import settings
@@ -11,6 +13,17 @@ from a10_guardian.core.config import settings
 # Suppress SSL warnings
 if not settings.A10_VERIFY_SSL:
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+
+def _get_fernet() -> Fernet | None:
+    """Return a Fernet cipher keyed from API_SECRET_TOKEN, or None if unavailable."""
+    try:
+        # Derive a 32-byte URL-safe base64 key from the secret token
+        raw = settings.API_SECRET_TOKEN.encode()[:32].ljust(32, b"\x00")
+        key = base64.urlsafe_b64encode(raw)
+        return Fernet(key)
+    except Exception:
+        return None
 
 
 class AuthService:
@@ -24,7 +37,10 @@ class AuthService:
         self.cache_file = settings.SESSION_CACHE_FILE
 
     def save_session(self, session):
-        """Saves the session cookies to a JSON file.
+        """Saves the session cookies to an encrypted file.
+
+        Uses Fernet (AES-128-CBC + HMAC-SHA256) keyed from API_SECRET_TOKEN.
+        Falls back to plaintext only if encryption is unavailable.
 
         Args:
             session (requests.Session): The active session object.
@@ -35,14 +51,30 @@ class AuthService:
             if cache_dir:
                 os.makedirs(cache_dir, exist_ok=True)
 
-            with open(self.cache_file, "w") as f:
-                json.dump(session.cookies.get_dict(), f)
-            logger.info(f"Session cached to {self.cache_file}")
+            payload = json.dumps(session.cookies.get_dict()).encode()
+            fernet = _get_fernet()
+
+            if fernet:
+                data = fernet.encrypt(payload)
+                with open(self.cache_file, "wb") as f:
+                    f.write(data)
+            else:
+                logger.warning("Fernet unavailable — session cache written as plaintext")
+                with open(self.cache_file, "w") as f:
+                    f.write(payload.decode())
+
+            # Restrict file to owner read/write only (effective on Linux/macOS)
+            try:
+                os.chmod(self.cache_file, 0o600)
+            except OSError:
+                pass  # Windows does not support POSIX chmod — acceptable
+
+            logger.info(f"Session cached (encrypted) to {self.cache_file}")
         except Exception as e:
             logger.error(f"Failed to save session cache: {e}")
 
     def load_session(self):
-        """Loads a session from the local cache file if it exists.
+        """Loads a session from the encrypted cache file if it exists.
 
         Returns:
             requests.Session: Restored session with cookies, or None if failed/missing.
@@ -51,8 +83,25 @@ class AuthService:
             return None
 
         try:
-            with open(self.cache_file) as f:
-                cookies = json.load(f)
+            fernet = _get_fernet()
+            with open(self.cache_file, "rb") as f:
+                raw = f.read()
+
+            if fernet:
+                try:
+                    payload = fernet.decrypt(raw)
+                    cookies = json.loads(payload)
+                except (InvalidToken, Exception):
+                    # Cache may be plaintext from a previous version — try direct parse
+                    try:
+                        cookies = json.loads(raw)
+                        logger.warning("Session cache was plaintext — will be re-encrypted on next save")
+                    except Exception:
+                        logger.error("Session cache is corrupt or tampered — discarding")
+                        self.invalidate_session()
+                        return None
+            else:
+                cookies = json.loads(raw)
 
             session = requests.Session()
             session.cookies.update(cookies)

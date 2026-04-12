@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from a10_guardian.core.dependencies import get_mitigation_service, verify_api_token
+from a10_guardian.core.dependencies import get_mitigation_service, require_scope
+from a10_guardian.core.limiter import limiter
 from a10_guardian.schemas.common import GenericResponse
 from a10_guardian.schemas.mitigation import UnderAttackResponse, ZoneListResponse, ZoneStatusResponse
 from a10_guardian.services.mitigation_service import MitigationService
 
-router = APIRouter(prefix="/mitigation", tags=["Mitigation"], dependencies=[Depends(verify_api_token)])
+router = APIRouter(prefix="/mitigation", tags=["Mitigation"])
 
 MITIGATE_DESC = (
     "All-in-one mitigation. Creates zone + monitor + deploy from the Golden Payload"
@@ -13,9 +14,19 @@ MITIGATE_DESC = (
 )
 
 
-@router.post("/zones/mitigate/{ip}", response_model=GenericResponse, summary="Mitigate IP", description=MITIGATE_DESC)
+@router.post(
+    "/zones/mitigate/{ip}",
+    response_model=GenericResponse,
+    summary="Mitigate IP",
+    description=MITIGATE_DESC,
+    dependencies=[Depends(require_scope("mitigation:write"))],
+)
+@limiter.limit("20/minute")
 def ensure_mitigation(
-    ip: str, template: str | None = None, service: MitigationService = Depends(get_mitigation_service)
+    request: Request,
+    ip: str,
+    template: str | None = None,
+    service: MitigationService = Depends(get_mitigation_service),
 ):
     """Mitigate an IP address using a specific template.
 
@@ -39,6 +50,7 @@ def ensure_mitigation(
     response_model=ZoneListResponse,
     summary="List Zones",
     description="Paginated list of all protected zones.",
+    dependencies=[Depends(require_scope("mitigation:read"))],
 )
 def list_zones(service: MitigationService = Depends(get_mitigation_service), page: int = 1, items: int = 40):
     try:
@@ -52,6 +64,7 @@ def list_zones(service: MitigationService = Depends(get_mitigation_service), pag
     response_model=ZoneStatusResponse,
     summary="Zone Status",
     description="Configuration and status of a specific zone by IP address.",
+    dependencies=[Depends(require_scope("mitigation:read"))],
 )
 def get_zone_status(ip: str, service: MitigationService = Depends(get_mitigation_service)):
     try:
@@ -70,6 +83,7 @@ def get_zone_status(ip: str, service: MitigationService = Depends(get_mitigation
     response_model=UnderAttackResponse,
     summary="Under Attack Check",
     description="Returns whether the /24 block of a given IP is currently under attack (operational_mode=mitigation).",
+    dependencies=[Depends(require_scope("mitigation:read"))],
 )
 def under_attack(ip: str, service: MitigationService = Depends(get_mitigation_service)):
     try:
@@ -85,8 +99,14 @@ def under_attack(ip: str, service: MitigationService = Depends(get_mitigation_se
     response_model=GenericResponse,
     summary="Remove Zone",
     description="Stop mitigation and delete the zone for a specific IP address.",
+    dependencies=[Depends(require_scope("mitigation:write"))],
 )
-def remove_zone(ip: str, service: MitigationService = Depends(get_mitigation_service)):
+@limiter.limit("20/minute")
+def remove_zone(
+    request: Request,
+    ip: str,
+    service: MitigationService = Depends(get_mitigation_service),
+):
     try:
         return service.remove_zone(ip)
     except HTTPException:

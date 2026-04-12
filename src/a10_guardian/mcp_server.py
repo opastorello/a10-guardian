@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 
 from fastmcp import FastMCP
@@ -7,10 +8,19 @@ from loguru import logger
 
 from a10_guardian.core.client import A10Client
 from a10_guardian.core.config import settings
+from a10_guardian.schemas.template import ZoneTemplate
 from a10_guardian.services.mitigation_service import MitigationService
 from a10_guardian.services.notification_service import NotificationService
 from a10_guardian.services.system_service import SystemService
 from a10_guardian.services.template_service import TemplateService
+
+_SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+
+
+def _validate_mcp_name(name: str) -> None:
+    """Raise ValueError if the template name contains path traversal or invalid chars."""
+    if not _SAFE_NAME_RE.match(name):
+        raise ValueError(f"Invalid template name '{name}': use only letters, digits, hyphens, underscores (max 64 chars)")
 
 # Configure Logging for MCP (StdErr only to avoid breaking JSON-RPC on StdOut)
 logger.remove()
@@ -33,7 +43,7 @@ auth_provider = None
 if MCP_TRANSPORT != "stdio":
     auth_provider = StaticTokenVerifier(
         tokens={
-            settings.API_SECRET_TOKEN: {
+            settings.MCP_SECRET_TOKEN: {
                 "client_id": "mcp-client",
                 "scopes": ["admin"],
             }
@@ -294,6 +304,7 @@ def get_zone_template(name: str = "default") -> str:
         name: Template name (default: "default")
     """
     try:
+        _validate_mcp_name(name)
         service = Container.get_template_service()
         template_data = service.get_template(name)
 
@@ -330,11 +341,14 @@ def set_zone_template(template_json: str, name: str = "default") -> str:
     try:
         import json
 
+        _validate_mcp_name(name)
+
         # Parse JSON
         template_data = json.loads(template_json)
 
-        # Ensure name matches
+        # Validate structure with Pydantic before passing to service
         template_data["name"] = name
+        ZoneTemplate(**template_data)  # raises ValidationError if schema is wrong
 
         service = Container.get_template_service()
         try:
@@ -393,6 +407,7 @@ def import_zone_template(ip_address: str, name: str) -> str:
         name: Name for the new template
     """
     try:
+        _validate_mcp_name(name)
         service = Container.get_template_service()
         result = service.import_from_zone(ip_address, name)
 

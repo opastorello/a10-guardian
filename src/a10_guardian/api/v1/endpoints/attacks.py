@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, Query
 
-from a10_guardian.core.dependencies import get_attack_service, verify_api_token
+from a10_guardian.core.dependencies import get_attack_service, require_scope
 from a10_guardian.schemas.attack import (
     IncidentDetailsResponse,
     IncidentStatsResponse,
@@ -10,10 +10,10 @@ from a10_guardian.schemas.attack import (
 )
 from a10_guardian.services.attack_service import AttackService
 
-router = APIRouter(prefix="/attacks", tags=["Attack Monitoring"], dependencies=[Depends(verify_api_token)])
+router = APIRouter(prefix="/attacks", tags=["Attack Monitoring"])
 
 
-@router.get("/ongoing", response_model=OngoingIncidentsResponse, summary="List ongoing DDoS attacks")
+@router.get("/ongoing", response_model=OngoingIncidentsResponse, summary="List ongoing DDoS attacks", dependencies=[Depends(require_scope("attacks:read"))])
 def list_ongoing_attacks(
     page: int = Query(default=1, ge=1, description="Page number"),
     items: int = Query(default=20, ge=1, le=100, description="Items per page"),
@@ -34,6 +34,7 @@ def list_ongoing_attacks(
     "/incident/{incident_id}/stats",
     response_model=IncidentStatsResponse,
     summary="Get attack statistics",
+    dependencies=[Depends(require_scope("attacks:read"))],
     responses={
         200: {
             "description": "Incident statistics retrieved successfully",
@@ -82,6 +83,7 @@ def get_attack_stats(
     "/incident/{incident_id}/details",
     response_model=IncidentDetailsResponse,
     summary="Get full incident details",
+    dependencies=[Depends(require_scope("attacks:read"))],
     responses={
         200: {
             "description": "Full incident details retrieved successfully",

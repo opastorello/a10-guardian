@@ -4,6 +4,15 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 
+def _is_debug() -> bool:
+    """Lazy import to avoid circular dependency with config."""
+    try:
+        from a10_guardian.core.config import settings
+        return settings.DEBUG
+    except Exception:
+        return False
+
+
 class ProblemDetails(BaseModel):
     type: str = "about:blank"
     title: str
@@ -37,7 +46,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    problem = ProblemDetails(title="Validation Error", status=422, detail=str(exc), instance=str(request.url))
+    # Only expose full Pydantic error detail in DEBUG mode; in production return a generic message
+    detail = str(exc) if _is_debug() else "Request validation failed. Check your request body and parameters."
+    problem = ProblemDetails(title="Validation Error", status=422, detail=detail, instance=str(request.url))
     return JSONResponse(status_code=422, content=problem.model_dump())
 
 

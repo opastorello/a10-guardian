@@ -1,9 +1,20 @@
 """Service for managing zone templates - load, save, validate, import."""
 
 import json
+import re
 from pathlib import Path
 
+from fastapi import HTTPException
 from loguru import logger
+
+_SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+
+
+def _validate_template_name(name: str) -> str:
+    """Reject names with path traversal characters or invalid patterns."""
+    if not _SAFE_NAME_RE.match(name):
+        raise HTTPException(status_code=400, detail="Invalid template name: use only letters, digits, hyphens, underscores (max 64 chars)")
+    return name
 
 from a10_guardian.core.client import A10Client
 from a10_guardian.core.config import settings
@@ -33,6 +44,7 @@ class TemplateService:
         Raises:
             TemplateNotFoundError: If template file doesn't exist
         """
+        _validate_template_name(name)
         template_path = self.template_dir / f"{name}.json"
 
         if not template_path.exists():
@@ -53,6 +65,8 @@ class TemplateService:
     def save_template(self, template: dict, name: str, is_update: bool = False) -> dict:
         """Validate and save template to JSON file.
 
+        _validate_template_name(name) is called first to block path traversal.
+
         Performs both structural validation (Pydantic) and A10 validation (profiles/policies exist).
         Sends notification based on NOTIFY_TEMPLATE_CREATE or NOTIFY_TEMPLATE_UPDATE settings.
 
@@ -68,6 +82,8 @@ class TemplateService:
             TemplateValidationError: If Pydantic validation fails
             TemplateA10ValidationError: If A10 resources don't exist
         """
+        _validate_template_name(name)
+
         # 1. Structural validation with Pydantic
         try:
             validated_template = ZoneTemplate(**template)
@@ -235,6 +251,8 @@ class TemplateService:
             TemplateValidationError: If trying to delete 'default'
             TemplateNotFoundError: If template doesn't exist
         """
+        _validate_template_name(name)
+
         if name == "default":
             raise TemplateValidationError("Cannot delete protected template 'default'")
 
@@ -278,6 +296,8 @@ class TemplateService:
             TemplateNotFoundError: If zone doesn't exist
             TemplateValidationError: If import fails
         """
+        _validate_template_name(name)
+
         # Search for zone by IP - list all zones and find match
         try:
             # Get all zones using the correct endpoint
