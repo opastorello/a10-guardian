@@ -20,7 +20,10 @@ _SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 def _validate_mcp_name(name: str) -> None:
     """Raise ValueError if the template name contains path traversal or invalid chars."""
     if not _SAFE_NAME_RE.match(name):
-        raise ValueError(f"Invalid template name '{name}': use only letters, digits, hyphens, underscores (max 64 chars)")
+        raise ValueError(
+            f"Invalid template name '{name}': "
+            "use only letters, digits, hyphens, underscores (max 64 chars)"
+        )
 
 # Configure Logging for MCP (StdErr only to avoid breaking JSON-RPC on StdOut)
 logger.remove()

@@ -107,7 +107,11 @@ def create_or_update_template(
     dependencies=[Depends(require_scope("templates:read"))],
 )
 @limiter.limit("30/minute")
-def validate_template(request: Request, template: ZoneTemplate, service: TemplateService = Depends(get_template_service)):
+def validate_template(
+    request: Request,
+    template: ZoneTemplate,
+    service: TemplateService = Depends(get_template_service),
+):
     """Validate template without saving (dry-run)."""
     try:
         # Run A10 validation

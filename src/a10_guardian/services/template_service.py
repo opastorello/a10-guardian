@@ -7,20 +7,27 @@ from pathlib import Path
 from fastapi import HTTPException
 from loguru import logger
 
+from a10_guardian.core.client import A10Client
+from a10_guardian.core.config import settings
+from a10_guardian.core.exceptions import (
+    TemplateA10ValidationError,
+    TemplateNotFoundError,
+    TemplateValidationError,
+)
+from a10_guardian.schemas.template import ZoneTemplate
+from a10_guardian.services.notification_service import NotificationService
+
 _SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 
 def _validate_template_name(name: str) -> str:
     """Reject names with path traversal characters or invalid patterns."""
     if not _SAFE_NAME_RE.match(name):
-        raise HTTPException(status_code=400, detail="Invalid template name: use only letters, digits, hyphens, underscores (max 64 chars)")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid template name: use only letters, digits, hyphens, underscores (max 64 chars)",
+        )
     return name
-
-from a10_guardian.core.client import A10Client
-from a10_guardian.core.config import settings
-from a10_guardian.core.exceptions import TemplateA10ValidationError, TemplateNotFoundError, TemplateValidationError
-from a10_guardian.schemas.template import ZoneTemplate
-from a10_guardian.services.notification_service import NotificationService
 
 
 class TemplateService:

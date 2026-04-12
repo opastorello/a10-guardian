@@ -13,7 +13,12 @@ from a10_guardian.services.attack_service import AttackService
 router = APIRouter(prefix="/attacks", tags=["Attack Monitoring"])
 
 
-@router.get("/ongoing", response_model=OngoingIncidentsResponse, summary="List ongoing DDoS attacks", dependencies=[Depends(require_scope("attacks:read"))])
+@router.get(
+    "/ongoing",
+    response_model=OngoingIncidentsResponse,
+    summary="List ongoing DDoS attacks",
+    dependencies=[Depends(require_scope("attacks:read"))],
+)
 def list_ongoing_attacks(
     page: int = Query(default=1, ge=1, description="Page number"),
     items: int = Query(default=20, ge=1, le=100, description="Items per page"),

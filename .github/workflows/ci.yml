@@ -13,6 +13,7 @@ env:
   A10_USERNAME: ci-test
   A10_PASSWORD: ci-test
   API_SECRET_TOKEN: ci-test-token
+  MCP_SECRET_TOKEN: ci-test-mcp-token
 
 jobs:
   lint:

@@ -28,7 +28,11 @@ class Settings(BaseSettings):
     )
     CORS_ORIGINS: list[str] = Field(
         default=[],
-        description="Allowed CORS origins (comma-separated in .env, e.g. https://app.example.com,https://admin.example.com). Empty = deny all cross-origin requests.",
+        description=(
+            "Allowed CORS origins (comma-separated in .env, "
+            "e.g. https://app.example.com,https://admin.example.com). "
+            "Empty = deny all cross-origin requests."
+        ),
     )
 
     # App Config
