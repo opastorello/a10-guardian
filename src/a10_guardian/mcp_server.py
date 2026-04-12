@@ -4,8 +4,8 @@ import sys
 
 from fastmcp import FastMCP
 from loguru import logger
-from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from a10_guardian.core.client import A10Client
 from a10_guardian.core.config import settings
@@ -43,21 +43,31 @@ MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.environ.get("MCP_PORT", "8001"))
 
 
-class BearerTokenMiddleware(BaseHTTPMiddleware):
-    """Simple Bearer token auth — no OAuth2 flow, compatible with mcp-remote and Claude Desktop."""
+class BearerTokenMiddleware:
+    """Simple Bearer token auth — pure ASGI, no OAuth2 flow, compatible with FastMCP 3.x."""
 
-    async def dispatch(self, request, call_next):
-        if request.url.path == "/":
-            return await call_next(request)
-        auth = request.headers.get("Authorization", "")
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope.get("path") == "/":
+            await self.app(scope, receive, send)
+            return
+
+        headers = dict(scope.get("headers", []))
+        auth = headers.get(b"authorization", b"").decode()
         token = auth.removeprefix("Bearer ").strip()
+
         if not token or token != settings.MCP_SECRET_TOKEN:
-            return JSONResponse(
+            response = JSONResponse(
                 {"error": "unauthorized", "error_description": "Valid Bearer token required."},
                 status_code=401,
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        return await call_next(request)
+            await response(scope, receive, send)
+            return
+
+        await self.app(scope, receive, send)
 
 
 # Auth: simple Bearer token middleware for HTTP transports (stdio doesn't need auth)
