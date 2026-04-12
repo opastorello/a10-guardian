@@ -4,8 +4,9 @@ import sys
 
 from fastmcp import FastMCP
 from loguru import logger
-from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from a10_guardian.core.client import A10Client
 from a10_guardian.core.config import settings
@@ -43,41 +44,26 @@ MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
 MCP_PORT = int(os.environ.get("MCP_PORT", "8001"))
 
 
-class BearerTokenMiddleware:
-    """Simple Bearer token auth — pure ASGI, no OAuth2 flow, compatible with FastMCP 3.x."""
+class BearerTokenMiddleware(BaseHTTPMiddleware):
+    """Simple Bearer token auth — Starlette HTTP middleware for FastMCP 3.x http_app."""
 
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or scope.get("path") == "/":
-            await self.app(scope, receive, send)
-            return
-
-        headers = dict(scope.get("headers", []))
-        auth = headers.get(b"authorization", b"").decode()
+    async def dispatch(self, request, call_next):
+        if request.url.path == "/":
+            return await call_next(request)
+        auth = request.headers.get("Authorization", "")
         token = auth.removeprefix("Bearer ").strip()
-
         if not token or token != settings.MCP_SECRET_TOKEN:
-            response = JSONResponse(
-                {"error": "unauthorized", "error_description": "Valid Bearer token required."},
+            return Response(
+                '{"error":"unauthorized","error_description":"Valid Bearer token required."}',
                 status_code=401,
+                media_type="application/json",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-            await response(scope, receive, send)
-            return
-
-        await self.app(scope, receive, send)
+        return await call_next(request)
 
 
-# Auth: simple Bearer token middleware for HTTP transports (stdio doesn't need auth)
-_middleware: list = []
-if MCP_TRANSPORT != "stdio" and settings.MCP_SECRET_TOKEN:
-    _middleware.append(BearerTokenMiddleware)
-    logger.info("MCP HTTP auth enabled (Bearer token required)")
-
-# Create MCP Server
-mcp = FastMCP("A10 Guardian", middleware=_middleware)
+# Create MCP Server (no auth at FastMCP level — handled via HTTP middleware below)
+mcp = FastMCP("A10 Guardian")
 
 # Landing page for HTTP transport (GET /)
 if MCP_TRANSPORT != "stdio":
@@ -456,11 +442,17 @@ if __name__ == "__main__":
         if MCP_TRANSPORT == "stdio":
             mcp.run()
         else:
-            # HTTP transports: "streamable-http", "sse"
+            # Build HTTP middleware list — Bearer token auth for remote transports
+            http_middleware = []
+            if settings.MCP_SECRET_TOKEN:
+                http_middleware.append(Middleware(BearerTokenMiddleware))
+                logger.info("MCP HTTP auth enabled (Bearer token required)")
+
             mcp.run(
                 transport=MCP_TRANSPORT,
                 host=MCP_HOST,
                 port=MCP_PORT,
+                middleware=http_middleware,
             )
     except Exception as e:
         logger.critical(f"Failed to start MCP Server: {e}")
