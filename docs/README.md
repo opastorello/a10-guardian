@@ -239,7 +239,7 @@ Zonas podem levar 20-30 segundos para serem criadas. Aumentar timeout da requisi
 - **API Docs:** http://localhost:8000/docs
 - **Health Check:** http://localhost:8000/health
 - **Logs:** `docker compose logs api -f`
-- **GitHub Issues:** [Reportar problema](https://github.com/seu-repo/issues)
+- **GitHub Issues:** [Reportar problema](https://github.com/opastorello/a10-guardian/issues)
 
 ---
 
