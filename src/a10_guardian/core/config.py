@@ -42,6 +42,7 @@ class Settings(BaseSettings):
 
     # App Config
     DEBUG: bool = Field(default=False)
+    DOCS_ENABLED: bool = Field(default=True, description="Expose /docs and /redoc endpoints (disable in production)")
     LOG_LEVEL: str = Field(default="INFO", description="Logging Level (DEBUG, INFO, WARNING, ERROR)")
     RATE_LIMIT_DEFAULT: str = Field(default="60/minute", description="Global Rate Limit")
     # Notifications
