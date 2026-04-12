@@ -1,4 +1,6 @@
-from pydantic import Field
+from typing import Literal
+
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,8 +43,19 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     # App Config
+    ENVIRONMENT: Literal["development", "production"] = Field(
+        default="production",
+        description="App environment. 'development' enables /docs, /redoc and debug behaviors. 'production' disables them.",
+    )
     DEBUG: bool = Field(default=False)
-    DOCS_ENABLED: bool = Field(default=True, description="Expose /docs and /redoc endpoints (disable in production)")
+    DOCS_ENABLED: bool | None = Field(
+        default=None,
+        description=(
+            "Expose /docs, /redoc and /openapi.json. "
+            "Defaults to True in development, False in production. "
+            "Set explicitly to override the environment default."
+        ),
+    )
     LOG_LEVEL: str = Field(default="INFO", description="Logging Level (DEBUG, INFO, WARNING, ERROR)")
     RATE_LIMIT_DEFAULT: str = Field(default="60/minute", description="Global Rate Limit")
     # Notifications
@@ -103,6 +116,16 @@ class Settings(BaseSettings):
     SESSION_CACHE_FILE: str = "config/session/session_cache.json"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore", case_sensitive=True)
+
+    @model_validator(mode="after")
+    def apply_environment_defaults(self) -> "Settings":
+        if self.DOCS_ENABLED is None:
+            self.DOCS_ENABLED = self.ENVIRONMENT == "development"
+        return self
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

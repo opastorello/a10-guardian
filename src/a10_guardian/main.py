@@ -357,11 +357,6 @@ app.add_exception_handler(Exception, generic_exception_handler)
 app.include_router(api_router, prefix="/api/v1")
 
 
-@app.get("/", include_in_schema=False)
-def read_root():
-    return {"message": "Welcome to the A10 Guardian API Wrapper"}
-
-
 @app.get("/health", tags=["System"])
 def health_check(check_upstream: bool = False, client: A10Client = Depends(get_a10_client)):
     status = {"status": "ok", "app": "up"}
