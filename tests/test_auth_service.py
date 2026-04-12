@@ -19,12 +19,17 @@ class TestAuthService:
         return session
 
     def test_save_session_success(self, auth_service, mock_session):
-        with patch("builtins.open", mock_open()) as mock_file:
-            with patch("json.dump") as mock_json_dump:
-                auth_service.save_session(mock_session)
+        mock_session.cookies.get_dict.return_value = {"sessionid": "abc"}
+        mock_fernet = MagicMock()
+        mock_fernet.encrypt.return_value = b"encrypted-data"
 
-                mock_file.assert_called_with(auth_service.cache_file, "w")
-                mock_json_dump.assert_called_once_with(mock_session.cookies.get_dict(), mock_file())
+        with patch("a10_guardian.services.auth_service._get_fernet", return_value=mock_fernet):
+            with patch("builtins.open", mock_open()) as mock_file:
+                with patch("os.chmod"):
+                    auth_service.save_session(mock_session)
+
+                mock_file.assert_called_with(auth_service.cache_file, "wb")
+                mock_fernet.encrypt.assert_called_once()
 
     def test_save_session_error(self, auth_service, mock_session):
         with patch("builtins.open", side_effect=OSError("Permission denied")):
