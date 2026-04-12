@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     # App Config
     ENVIRONMENT: Literal["development", "production"] = Field(
         default="production",
-        description="App environment. 'development' enables /docs, /redoc and debug behaviors. 'production' disables them.",
+        description="App environment. 'development' enables /docs, /redoc. 'production' disables them.",
     )
     DEBUG: bool = Field(default=False)
     DOCS_ENABLED: bool | None = Field(
