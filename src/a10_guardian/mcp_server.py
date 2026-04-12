@@ -177,8 +177,10 @@ def get_system_devices() -> str:
 
         result = f"Found {len(devices)} device(s):\n"
         for device in devices:
-            status = device.get("status", "unknown")
-            result += f"- {device.get('name', 'N/A')} (status: {status})\n"
+            name = device.get("dns_name") or device.get("name", "N/A")
+            status = device.get("oper_status_label") or device.get("status", "unknown")
+            model = device.get("model", "")
+            result += f"- {name} ({model}) — {status}\n"
         return result
     except Exception as e:
         logger.error(f"Get devices failed: {e}")
