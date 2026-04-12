@@ -328,7 +328,7 @@ app = FastAPI(
 )
 
 # CORS — restrict to configured origins only (empty = deny all cross-origin requests)
-_cors_origins = [o.strip() for o in settings.CORS_ORIGINS if o.strip()]
+_cors_origins = settings.cors_origins_list
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,

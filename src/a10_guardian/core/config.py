@@ -1,4 +1,4 @@
-from pydantic import Field, field_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,8 +26,8 @@ class Settings(BaseSettings):
             '"tok_mit": ["mitigation:read","mitigation:write"]}'
         ),
     )
-    CORS_ORIGINS: list[str] = Field(
-        default=[],
+    CORS_ORIGINS: str = Field(
+        default="",
         description=(
             "Allowed CORS origins (comma-separated in .env, "
             "e.g. https://app.example.com,https://admin.example.com). "
@@ -35,13 +35,10 @@ class Settings(BaseSettings):
         ),
     )
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: object) -> object:
-        """Accept comma-separated string or JSON array."""
-        if isinstance(v, str) and v.strip() and not v.strip().startswith("["):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parse CORS_ORIGINS string into a list."""
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     # App Config
     DEBUG: bool = Field(default=False)
