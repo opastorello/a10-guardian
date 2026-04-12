@@ -162,7 +162,15 @@ def get_system_devices() -> str:
     """Lists all A10 TPS devices in the deployment/cluster."""
     try:
         service = Container.get_system_service()
-        devices = service.get_devices()
+        data = service.get_devices()
+
+        # A10 returns {"total": N, "object_list": [...]}
+        if isinstance(data, dict):
+            devices = data.get("object_list", [])
+        elif isinstance(data, list):
+            devices = data
+        else:
+            devices = []
 
         if not devices:
             return "No devices found."
@@ -244,7 +252,7 @@ def list_active_mitigations() -> str:
 
 
 @mcp.tool()
-def mitigate_ip(ip_address: str, template: str | None = None) -> str:
+def mitigate_ip(ip: str, template: str | None = None) -> str:
     """
     All-in-one mitigation for a specific IP address using a configured template.
     - If zone does NOT exist: creates it from the specified template,
@@ -254,29 +262,32 @@ def mitigate_ip(ip_address: str, template: str | None = None) -> str:
       the configuration is up to date.
 
     Args:
-        ip_address: IP address to mitigate
+        ip: IP address to mitigate (e.g. "203.0.113.5")
         template: Template name to use. If not specified, auto-selects if only one template exists.
     """
     try:
         service = Container.get_mitigation_service()
-        result = service.ensure_mitigation(ip_address, template=template)
+        result = service.ensure_mitigation(ip, template=template)
         return result.get("message", "Unknown result")
     except Exception as e:
-        logger.error(f"Mitigation failed for {ip_address} with template {template}: {e}")
+        logger.error(f"Mitigation failed for {ip} with template {template}: {e}")
         return f"Error executing mitigation: {str(e)}"
 
 
 @mcp.tool()
-def get_zone_status(ip_address: str) -> str:
+def get_zone_status(ip: str) -> str:
     """
     Returns the configuration and status of a specific mitigation zone by IP address.
     Useful to check if an IP is protected, its operational mode, and applied services.
+
+    Args:
+        ip: IP address to look up (e.g. "203.0.113.5")
     """
     try:
         service = Container.get_mitigation_service()
-        status = service.get_zone_status(ip_address)
+        status = service.get_zone_status(ip)
         if not status:
-            return f"No zone found for IP: {ip_address}"
+            return f"No zone found for IP: {ip}"
 
         return (
             f"Zone: {status['zone_name']}\n"
@@ -286,22 +297,25 @@ def get_zone_status(ip_address: str) -> str:
             f"IPs: {', '.join(status.get('ip_list', []))}"
         )
     except Exception as e:
-        logger.error(f"Zone status check failed for {ip_address}: {e}")
+        logger.error(f"Zone status check failed for {ip}: {e}")
         return f"Error checking zone status: {str(e)}"
 
 
 @mcp.tool()
-def remove_mitigation(ip_address: str) -> str:
+def remove_mitigation(ip: str) -> str:
     """
     Stops mitigation for a specific IP address and removes the zone.
+
+    Args:
+        ip: IP address to stop mitigating (e.g. "203.0.113.5")
     """
     try:
         service = Container.get_mitigation_service()
-        result = service.remove_zone(ip_address)
+        result = service.remove_zone(ip)
         return result.message
     except Exception as e:
-        logger.error(f"Remove mitigation failed for {ip_address}: {e}")
-        return f"Error removing mitigation for {ip_address}: {str(e)}"
+        logger.error(f"Remove mitigation failed for {ip}: {e}")
+        return f"Error removing mitigation for {ip}: {str(e)}"
 
 
 # Template Management Tools
@@ -408,29 +422,29 @@ def list_zone_templates() -> str:
 
 
 @mcp.tool()
-def import_zone_template(ip_address: str, name: str) -> str:
+def import_zone_template(ip: str, name: str) -> str:
     """
     Imports a template from an existing A10 zone configuration.
     Fetches zone by IP, extracts payloads, removes IP-specific fields, and saves as template.
 
     Args:
-        ip_address: IP of existing zone to import from
+        ip: IP of existing zone to import from (e.g. "203.0.113.5")
         name: Name for the new template
     """
     try:
         _validate_mcp_name(name)
         service = Container.get_template_service()
-        result = service.import_from_zone(ip_address, name)
+        result = service.import_from_zone(ip, name)
 
-        return f"✓ Template '{name}' imported from zone {ip_address}!\n{result.get('message', '')}"
+        return f"✓ Template '{name}' imported from zone {ip}!\n{result.get('message', '')}"
     except NotImplementedError:
         return (
             "Import feature will be implemented after template system is fully operational. "
             "Use set_zone_template to create templates manually for now."
         )
     except Exception as e:
-        logger.error(f"Import template failed from {ip_address}: {e}")
-        return f"Error importing template from {ip_address}: {str(e)}"
+        logger.error(f"Import template failed from {ip}: {e}")
+        return f"Error importing template from {ip}: {str(e)}"
 
 
 if __name__ == "__main__":
