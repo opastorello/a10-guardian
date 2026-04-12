@@ -21,14 +21,16 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Scopes
 # ---------------------------------------------------------------------------
-ALL_SCOPES: frozenset[str] = frozenset([
-    "system:read",
-    "mitigation:read",
-    "mitigation:write",
-    "templates:read",
-    "templates:write",
-    "attacks:read",
-])
+ALL_SCOPES: frozenset[str] = frozenset(
+    [
+        "system:read",
+        "mitigation:read",
+        "mitigation:write",
+        "templates:read",
+        "templates:write",
+        "attacks:read",
+    ]
+)
 
 # ---------------------------------------------------------------------------
 # Token header — shows Authorize button in Swagger UI
@@ -60,12 +62,12 @@ def _record_failure(client_ip: str) -> None:
 def _resolve_scopes(api_key: str) -> frozenset[str] | None:
     """Return the scopes granted to this token, or None if the token is invalid."""
     if api_key == settings.API_SECRET_TOKEN:
-        return ALL_SCOPES                          # internal master → full access
+        return ALL_SCOPES  # internal master → full access
     if api_key == settings.MCP_SECRET_TOKEN:
-        return ALL_SCOPES                          # MCP server → full access, dedicated token
+        return ALL_SCOPES  # MCP server → full access, dedicated token
     token_map: dict[str, list[str]] = settings.API_TOKENS
     if api_key in token_map:
-        granted = frozenset(token_map[api_key]) & ALL_SCOPES   # only recognised scopes
+        granted = frozenset(token_map[api_key]) & ALL_SCOPES  # only recognised scopes
         return granted
     return None
 
@@ -80,6 +82,7 @@ def require_scope(*required_scopes: str) -> Callable:
     Usage:
         @router.get("/zones/list", dependencies=[Depends(require_scope("mitigation:read"))])
     """
+
     async def _dependency(request: Request, api_key: str = Security(api_key_header)) -> str:
         client_ip = request.client.host if request.client else "unknown"
 
