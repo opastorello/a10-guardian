@@ -311,11 +311,24 @@ class TemplateService:
             zones_response = self.client.get("/tps/protected_objects/zones/api/?page=1&items=1000")
             zones = zones_response.get("object_list", [])
 
-            # Find zone by zone_name matching IP
-            zone = next((z for z in zones if z.get("zone_name") == ip_address), None)
+            # Find zone by zone_name or by IP in ip_list
+            zone = next(
+                (
+                    z
+                    for z in zones
+                    if z.get("zone_name") == ip_address
+                    or ip_address in (z.get("ip_list") or [])
+                    or any(ip.split("/")[0] == ip_address for ip in (z.get("ip_list") or []))
+                ),
+                None,
+            )
 
             if not zone:
-                msg = f"Zone with IP '{ip_address}' not found in A10. Available zones: {len(zones)}"
+                available = [z.get("zone_name") for z in zones]
+                msg = (
+                    f"Zone '{ip_address}' not found in A10. "
+                    f"Available zone names: {', '.join(str(n) for n in available)}"
+                )
                 raise TemplateNotFoundError(msg)
 
         except TemplateNotFoundError:
