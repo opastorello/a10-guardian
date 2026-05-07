@@ -37,19 +37,19 @@ async def main():
         print(f"\n=== add_ip_to_zone(zone={ZONE}, ip={IP}) — expect added ===")
         print(await call(client, "add_ip_to_zone", {"zone_name": ZONE, "ip": IP}))
 
-        print(f"\n=== zone_has_ip — expect PRESENT ===")
+        print("\n=== zone_has_ip — expect PRESENT ===")
         print(await call(client, "zone_has_ip", {"zone_name": ZONE, "ip": IP}))
 
-        print(f"\n=== add_ip_to_zone again — expect already present (no change) ===")
+        print("\n=== add_ip_to_zone again — expect already present (no change) ===")
         print(await call(client, "add_ip_to_zone", {"zone_name": ZONE, "ip": IP}))
 
-        print(f"\n=== remove_ip_from_zone — expect removed ===")
+        print("\n=== remove_ip_from_zone — expect removed ===")
         print(await call(client, "remove_ip_from_zone", {"zone_name": ZONE, "ip": IP}))
 
-        print(f"\n=== zone_has_ip — expect NOT present ===")
+        print("\n=== zone_has_ip — expect NOT present ===")
         print(await call(client, "zone_has_ip", {"zone_name": ZONE, "ip": IP}))
 
-        print(f"\n=== remove_ip_from_zone again — expect error (404 IP not present) ===")
+        print("\n=== remove_ip_from_zone again — expect error (404 IP not present) ===")
         print(await call(client, "remove_ip_from_zone", {"zone_name": ZONE, "ip": IP}))
 
 
