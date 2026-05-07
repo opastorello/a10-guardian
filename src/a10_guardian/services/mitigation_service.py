@@ -1,4 +1,5 @@
 import copy
+import threading
 
 from fastapi import HTTPException
 from loguru import logger
@@ -8,6 +9,23 @@ from a10_guardian.core.config import settings
 from a10_guardian.schemas.common import GenericResponse
 from a10_guardian.services.notification_service import NotificationService
 from a10_guardian.services.template_service import TemplateService
+
+# Per-zone locks to serialize concurrent ip_list mutations within this process.
+# Protects against lost updates when multiple clients add/remove IPs on the same
+# zone simultaneously. Does NOT protect across multiple replicas — for that,
+# move to a distributed lock (Redis SET NX EX) keyed on zone_name.
+_ZONE_LOCKS: dict[str, threading.Lock] = {}
+_ZONE_LOCKS_MASTER = threading.Lock()
+
+
+def _get_zone_lock(zone_name: str) -> threading.Lock:
+    """Returns (creating if needed) the lock guarding mutations on a given zone."""
+    with _ZONE_LOCKS_MASTER:
+        lock = _ZONE_LOCKS.get(zone_name)
+        if lock is None:
+            lock = threading.Lock()
+            _ZONE_LOCKS[zone_name] = lock
+        return lock
 
 
 class MitigationService:
@@ -71,6 +89,214 @@ class MitigationService:
             if zone.get("zone_name") == ip:
                 return zone
         return None
+
+    def get_zone_by_name(self, zone_name: str):
+        """Finds a specific zone by its zone_name (any name, not just IP).
+
+        Args:
+            zone_name (str): Name of the zone (e.g. "On-Demand").
+
+        Returns:
+            dict: Zone object if found, None otherwise.
+        """
+        response = self.client.get("/tps/protected_objects/zones/api/?page=1&items=1000")
+        zones = response.get("object_list", [])
+
+        for zone in zones:
+            if zone.get("zone_name") == zone_name:
+                return zone
+        return None
+
+    def has_ip_in_zone(self, zone_name: str, ip: str) -> bool:
+        """Checks whether a given IP is present in the zone's ip_list.
+
+        Args:
+            zone_name (str): Name of the zone.
+            ip (str): IP address to search for.
+
+        Returns:
+            bool: True if the IP is present, False otherwise.
+
+        Raises:
+            HTTPException: 404 if the zone does not exist.
+        """
+        zone = self.get_zone_by_name(zone_name)
+        if not zone:
+            raise HTTPException(status_code=404, detail=f"Zone not found: {zone_name}")
+
+        details = self.get_zone_details(zone.get("id"))
+        ip_list = details.get("ip_list") or zone.get("ip_list") or []
+        return ip in ip_list
+
+    def add_ip_to_zone(self, zone_name: str, ip: str) -> dict:
+        """Adds an IP to the zone's ip_list. Idempotent: returns changed=False if already present.
+
+        Serialized per-zone with a process-local lock to avoid lost updates when
+        multiple callers mutate the same zone concurrently. After writing, the
+        zone is re-read and a 409 is raised if the new IP is not visible — that
+        catches A10-side rejections and changes made outside this API.
+
+        Args:
+            zone_name (str): Name of the zone.
+            ip (str): IP address to add.
+
+        Returns:
+            dict: {zone_name, ip, action: "added", changed: bool, ip_count: int}
+
+        Raises:
+            HTTPException: 404 if the zone does not exist; 409 if the post-write
+                verification shows the IP did not land in the zone.
+        """
+        with _get_zone_lock(zone_name):
+            zone = self.get_zone_by_name(zone_name)
+            if not zone:
+                raise HTTPException(status_code=404, detail=f"Zone not found: {zone_name}")
+
+            zone_id = zone.get("id")
+            details = self.get_zone_details(zone_id)
+            ip_list = list(details.get("ip_list") or [])
+
+            if ip in ip_list:
+                return {
+                    "zone_name": zone_name,
+                    "ip": ip,
+                    "action": "added",
+                    "changed": False,
+                    "ip_count": len(ip_list),
+                }
+
+            new_ip_list = [*ip_list, ip]
+            payload = copy.deepcopy(details)
+            payload["ip_list"] = new_ip_list
+            if "input_ips" in payload:
+                payload["input_ips"] = new_ip_list
+
+            self.update_zone(zone_id, payload)
+
+            verified = self.get_zone_details(zone_id)
+            verified_ip_list = list(verified.get("ip_list") or [])
+            if ip not in verified_ip_list:
+                logger.bind(audit=True, requester="API").warning(
+                    f"Action: Add IP to Zone | Zone: {zone_name} | IP: {ip} | "
+                    f"Status: Verification failed (post-write ip_list missing IP)"
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Add of {ip} to zone {zone_name} did not persist. "
+                        "Possible concurrent modification — please retry."
+                    ),
+                )
+
+            logger.bind(audit=True, requester="API").info(
+                f"Action: Add IP to Zone | Zone: {zone_name} | IP: {ip} | "
+                f"Status: Success | Total IPs: {len(verified_ip_list)}"
+            )
+
+            if settings.NOTIFY_ZONE_MODIFIED:
+                self.notifier.send_notification(
+                    title="Zone IP Added",
+                    message=f"IP {ip} added to zone {zone_name}",
+                    level="info",
+                    fields={
+                        "Zone": zone_name,
+                        "IP": ip,
+                        "Total IPs": str(len(verified_ip_list)),
+                    },
+                    event_type="zone_modified",
+                )
+
+            return {
+                "zone_name": zone_name,
+                "ip": ip,
+                "action": "added",
+                "changed": True,
+                "ip_count": len(verified_ip_list),
+            }
+
+    def remove_ip_from_zone(self, zone_name: str, ip: str) -> dict:
+        """Removes an IP from the zone's ip_list.
+
+        Serialized per-zone with a process-local lock; after writing, re-reads
+        the zone and raises 409 if the IP is still present.
+
+        Args:
+            zone_name (str): Name of the zone.
+            ip (str): IP address to remove.
+
+        Returns:
+            dict: {zone_name, ip, action: "removed", changed: True, ip_count: int}
+
+        Raises:
+            HTTPException: 404 if zone or IP is not found, 422 if IP is the last
+                one in the zone, 409 if post-write verification still sees the IP.
+        """
+        with _get_zone_lock(zone_name):
+            zone = self.get_zone_by_name(zone_name)
+            if not zone:
+                raise HTTPException(status_code=404, detail=f"Zone not found: {zone_name}")
+
+            zone_id = zone.get("id")
+            details = self.get_zone_details(zone_id)
+            ip_list = list(details.get("ip_list") or [])
+
+            if ip not in ip_list:
+                raise HTTPException(status_code=404, detail=f"IP {ip} not present in zone {zone_name}")
+
+            if len(ip_list) <= 1:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Cannot remove last IP from zone {zone_name}. Delete the zone instead.",
+                )
+
+            new_ip_list = [x for x in ip_list if x != ip]
+            payload = copy.deepcopy(details)
+            payload["ip_list"] = new_ip_list
+            if "input_ips" in payload:
+                payload["input_ips"] = new_ip_list
+
+            self.update_zone(zone_id, payload)
+
+            verified = self.get_zone_details(zone_id)
+            verified_ip_list = list(verified.get("ip_list") or [])
+            if ip in verified_ip_list:
+                logger.bind(audit=True, requester="API").warning(
+                    f"Action: Remove IP from Zone | Zone: {zone_name} | IP: {ip} | "
+                    f"Status: Verification failed (IP still present after write)"
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Remove of {ip} from zone {zone_name} did not persist. "
+                        "Possible concurrent modification — please retry."
+                    ),
+                )
+
+            logger.bind(audit=True, requester="API").info(
+                f"Action: Remove IP from Zone | Zone: {zone_name} | IP: {ip} | "
+                f"Status: Success | Total IPs: {len(verified_ip_list)}"
+            )
+
+            if settings.NOTIFY_ZONE_MODIFIED:
+                self.notifier.send_notification(
+                    title="Zone IP Removed",
+                    message=f"IP {ip} removed from zone {zone_name}",
+                    level="warning",
+                    fields={
+                        "Zone": zone_name,
+                        "IP": ip,
+                        "Total IPs": str(len(verified_ip_list)),
+                    },
+                    event_type="zone_modified",
+                )
+
+            return {
+                "zone_name": zone_name,
+                "ip": ip,
+                "action": "removed",
+                "changed": True,
+                "ip_count": len(verified_ip_list),
+            }
 
     def get_zone_status(self, ip: str) -> dict | None:
         """Gets the processed status of a zone by IP address.

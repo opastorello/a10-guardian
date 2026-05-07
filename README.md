@@ -179,6 +179,9 @@ All endpoints require the `x-api-token` header. Interactive docs available at `/
 | GET | `/api/v1/mitigation/zones/status/{ip}` | Full zone config by IP |
 | GET | `/api/v1/mitigation/under-attack/{ip}` | Check if the /24 block of a given IP is under attack |
 | DELETE | `/api/v1/mitigation/zones/remove/{ip}` | Stop mitigation and delete zone |
+| GET | `/api/v1/mitigation/zones/{zone_name}/ip/{ip}` | Check whether a specific IP is in a multi-IP zone's `ip_list` → `{found: bool}` |
+| POST | `/api/v1/mitigation/zones/{zone_name}/ip/{ip}` | Add an IP to a multi-IP zone (idempotent) |
+| DELETE | `/api/v1/mitigation/zones/{zone_name}/ip/{ip}` | Remove an IP from a multi-IP zone (404 if absent, 422 if last IP) |
 
 ### 📝 Templates
 
@@ -458,7 +461,7 @@ NOTIFY_TEMPLATE_CREATE=true
 
 ## 🤖 MCP Integration
 
-The MCP server exposes 12 tools for AI agents:
+The MCP server exposes 15 tools for AI agents:
 
 #### 🖥️ System & Monitoring
 
@@ -477,6 +480,9 @@ The MCP server exposes 12 tools for AI agents:
 |------------------------------------------|----------------------------------------------------------|
 | `mitigate_ip(ip_address, template)`      | Create or re-sync mitigation using specified template    |
 | `remove_mitigation(ip_address)`          | Stop mitigation and remove the zone                      |
+| `zone_has_ip(zone_name, ip)`             | Check whether an IP is in a multi-IP zone's `ip_list`    |
+| `add_ip_to_zone(zone_name, ip)`          | Add an IP to a multi-IP zone (idempotent, lock-protected) |
+| `remove_ip_from_zone(zone_name, ip)`     | Remove an IP from a multi-IP zone                        |
 
 #### 📝 Template Management
 

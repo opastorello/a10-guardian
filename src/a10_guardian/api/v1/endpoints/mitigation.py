@@ -3,7 +3,13 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from a10_guardian.core.dependencies import get_mitigation_service, require_scope
 from a10_guardian.core.limiter import limiter
 from a10_guardian.schemas.common import GenericResponse
-from a10_guardian.schemas.mitigation import UnderAttackResponse, ZoneListResponse, ZoneStatusResponse
+from a10_guardian.schemas.mitigation import (
+    UnderAttackResponse,
+    ZoneIPCheckResponse,
+    ZoneIPMutationResponse,
+    ZoneListResponse,
+    ZoneStatusResponse,
+)
 from a10_guardian.services.mitigation_service import MitigationService
 
 router = APIRouter(prefix="/mitigation", tags=["Mitigation"])
@@ -109,6 +115,70 @@ def remove_zone(
 ):
     try:
         return service.remove_zone(ip)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.get(
+    "/zones/{zone_name}/ip/{ip}",
+    response_model=ZoneIPCheckResponse,
+    summary="Check IP in Zone",
+    description="Returns whether a specific IP is present in the zone's ip_list.",
+    dependencies=[Depends(require_scope("mitigation:read"))],
+)
+def check_ip_in_zone(
+    zone_name: str,
+    ip: str,
+    service: MitigationService = Depends(get_mitigation_service),
+):
+    try:
+        return ZoneIPCheckResponse(found=service.has_ip_in_zone(zone_name, ip))
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.post(
+    "/zones/{zone_name}/ip/{ip}",
+    response_model=ZoneIPMutationResponse,
+    summary="Add IP to Zone",
+    description="Adds an IP to the zone's ip_list. Idempotent: returns changed=false if already present.",
+    dependencies=[Depends(require_scope("mitigation:write"))],
+)
+@limiter.limit("20/minute")
+def add_ip_to_zone(
+    request: Request,
+    zone_name: str,
+    ip: str,
+    service: MitigationService = Depends(get_mitigation_service),
+):
+    try:
+        return service.add_ip_to_zone(zone_name, ip)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) from e
+
+
+@router.delete(
+    "/zones/{zone_name}/ip/{ip}",
+    response_model=ZoneIPMutationResponse,
+    summary="Remove IP from Zone",
+    description="Removes an IP from the zone's ip_list. 404 if IP not present, 422 if it would empty the zone.",
+    dependencies=[Depends(require_scope("mitigation:write"))],
+)
+@limiter.limit("20/minute")
+def remove_ip_from_zone(
+    request: Request,
+    zone_name: str,
+    ip: str,
+    service: MitigationService = Depends(get_mitigation_service),
+):
+    try:
+        return service.remove_ip_from_zone(zone_name, ip)
     except HTTPException:
         raise
     except Exception as e:

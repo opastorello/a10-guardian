@@ -87,6 +87,9 @@ if MCP_TRANSPORT != "stdio":
                     "mitigate_ip",
                     "get_zone_status",
                     "remove_mitigation",
+                    "zone_has_ip",
+                    "add_ip_to_zone",
+                    "remove_ip_from_zone",
                     "get_zone_template",
                     "set_zone_template",
                     "list_zone_templates",
@@ -318,6 +321,64 @@ def remove_mitigation(ip: str) -> str:
     except Exception as e:
         logger.error(f"Remove mitigation failed for {ip}: {e}")
         return f"Error removing mitigation for {ip}: {str(e)}"
+
+
+@mcp.tool()
+def zone_has_ip(zone_name: str, ip: str) -> str:
+    """
+    Checks whether a specific IP is present in the ip_list of a zone.
+    Useful for multi-IP zones (e.g. "On-Demand") that group several IPs under one zone_name.
+
+    Args:
+        zone_name: The zone name (e.g. "On-Demand")
+        ip: IP address to look for (e.g. "203.0.113.5")
+    """
+    try:
+        service = Container.get_mitigation_service()
+        found = service.has_ip_in_zone(zone_name, ip)
+        return f"{ip} is {'PRESENT' if found else 'NOT present'} in zone '{zone_name}'."
+    except Exception as e:
+        logger.error(f"Zone IP check failed for {zone_name}/{ip}: {e}")
+        return f"Error checking IP in zone: {str(e)}"
+
+
+@mcp.tool()
+def add_ip_to_zone(zone_name: str, ip: str) -> str:
+    """
+    Adds an IP to the ip_list of a multi-IP zone. Idempotent: no-op if already present.
+
+    Args:
+        zone_name: The zone name (e.g. "On-Demand")
+        ip: IP address to add (e.g. "203.0.113.5")
+    """
+    try:
+        service = Container.get_mitigation_service()
+        result = service.add_ip_to_zone(zone_name, ip)
+        if result.get("changed"):
+            return f"✓ Added {ip} to zone '{zone_name}' (now {result['ip_count']} IPs)."
+        return f"{ip} was already in zone '{zone_name}' ({result['ip_count']} IPs, no change)."
+    except Exception as e:
+        logger.error(f"Add IP failed for {zone_name}/{ip}: {e}")
+        return f"Error adding IP: {str(e)}"
+
+
+@mcp.tool()
+def remove_ip_from_zone(zone_name: str, ip: str) -> str:
+    """
+    Removes an IP from the ip_list of a multi-IP zone.
+    Returns an error if the IP is the last one in the zone (delete the zone instead).
+
+    Args:
+        zone_name: The zone name (e.g. "On-Demand")
+        ip: IP address to remove (e.g. "203.0.113.5")
+    """
+    try:
+        service = Container.get_mitigation_service()
+        result = service.remove_ip_from_zone(zone_name, ip)
+        return f"✓ Removed {ip} from zone '{zone_name}' (now {result['ip_count']} IPs)."
+    except Exception as e:
+        logger.error(f"Remove IP failed for {zone_name}/{ip}: {e}")
+        return f"Error removing IP: {str(e)}"
 
 
 # Template Management Tools

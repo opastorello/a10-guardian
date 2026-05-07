@@ -27,3 +27,15 @@ class UnderAttackResponse(BaseModel):
     monitored: bool = Field(..., json_schema_extra={"example": True})
     ip: str = Field(..., json_schema_extra={"example": "181.215.253.2"})
     block: str = Field(..., json_schema_extra={"example": "181.215.253.0-255"})
+
+
+class ZoneIPCheckResponse(BaseModel):
+    found: bool = Field(..., json_schema_extra={"example": True})
+
+
+class ZoneIPMutationResponse(BaseModel):
+    zone_name: str = Field(..., json_schema_extra={"example": "On-Demand"})
+    ip: str = Field(..., json_schema_extra={"example": "203.0.113.5"})
+    action: str = Field(..., json_schema_extra={"example": "added"})
+    changed: bool = Field(..., json_schema_extra={"example": True})
+    ip_count: int = Field(..., json_schema_extra={"example": 9})
